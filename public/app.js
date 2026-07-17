@@ -559,6 +559,7 @@ function renderSmanSummary(summaryPayload) {
         const sekScore = subj.sekolah || 0;
         const kabScore = subj.kabupaten || 0;
         const nasScore = subj.nasional || 0;
+        const pesertaSek = subj.peserta?.sekolah || 0;
 
         const colorClass = getColorClass(sekScore);
         
@@ -593,6 +594,14 @@ function renderSmanSummary(summaryPayload) {
                 <span class="score-label">Daya Serap Sekolah</span>
             </div>
 
+            <!-- Jumlah peserta badge -->
+            ${pesertaSek > 0 ? `
+            <div style="display:flex;align-items:center;gap:6px;background:rgba(37,99,235,0.05);border:1px solid rgba(37,99,235,0.12);border-radius:0.625rem;padding:0.45rem 0.75rem;">
+                <svg style="width:14px;height:14px;color:#2563eb;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
+                <span style="font-size:0.7rem;font-weight:700;color:#2563eb">${formatNumber(pesertaSek)} siswa</span>
+                <span style="font-size:0.65rem;color:#94a3b8;font-weight:600">ikut TKA</span>
+            </div>` : ''}
+
             <div class="card-comparison-list">
                 <div class="card-comparison-row">
                     <span>Kabupaten Badung</span>
@@ -616,6 +625,138 @@ function renderSmanSummary(summaryPayload) {
         });
 
         smanSubjectsGrid.appendChild(card);
+    });
+
+    // Render tabel & chart peserta
+    renderPesertaSection(list);
+}
+
+// Render section jumlah peserta TKA per mata pelajaran
+let pesertaChart = null;
+function renderPesertaSection(list) {
+    const tableBody = document.getElementById('peserta-table-body');
+    const badgesEl  = document.getElementById('peserta-total-badges');
+    if (!tableBody) return;
+
+    const valid = list.filter(s => !s.error && s.peserta);
+
+    // Hitung total peserta sekolah
+    const totalSek = valid.reduce((acc, s) => acc + (s.peserta?.sekolah || 0), 0);
+    const totalKab = valid.reduce((acc, s) => acc + (s.peserta?.kabupaten || 0), 0);
+    const totalNas = valid.reduce((acc, s) => acc + (s.peserta?.nasional || 0), 0);
+
+    // Badges ringkasan
+    if (badgesEl) {
+        badgesEl.innerHTML = `
+            <div style="display:flex;align-items:center;gap:6px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:0.625rem;padding:0.4rem 0.85rem">
+                <span style="font-size:0.65rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em">SMAN 2 Mengwi</span>
+                <span style="font-size:0.9rem;font-weight:800;color:#2563eb">${formatNumber(totalSek)}</span>
+                <span style="font-size:0.65rem;color:#94a3b8;font-weight:600">siswa</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.625rem;padding:0.4rem 0.85rem">
+                <span style="font-size:0.65rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em">Kab. Badung</span>
+                <span style="font-size:0.9rem;font-weight:800;color:#475569">${formatNumber(totalKab)}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.625rem;padding:0.4rem 0.85rem">
+                <span style="font-size:0.65rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em">Nasional</span>
+                <span style="font-size:0.9rem;font-weight:800;color:#475569">${formatNumber(totalNas)}</span>
+            </div>
+        `;
+    }
+
+    // Render tabel
+    tableBody.innerHTML = valid.map(subj => {
+        const sek = subj.peserta?.sekolah || 0;
+        const kab = subj.peserta?.kabupaten || 0;
+        const nas = subj.peserta?.nasional || 0;
+        // Hitung share persen
+        const sharePct = kab > 0 ? ((sek / kab) * 100).toFixed(1) : '-';
+        const shareColor = sek / kab >= 0.12 ? '#059669' : sek / kab >= 0.07 ? '#d97706' : '#dc2626';
+        return `<tr class="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+            <td class="py-3 pr-4">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span style="font-size:0.75rem;font-weight:700;color:#0f172a">${subj.name}</span>
+                    <span style="font-size:0.65rem;background:rgba(37,99,235,0.07);color:#2563eb;border:1px solid rgba(37,99,235,0.12);padding:0.1rem 0.4rem;border-radius:0.375rem;font-weight:700">${subj.code}</span>
+                </div>
+            </td>
+            <td class="py-3 pr-4 text-right">
+                <span style="font-size:0.875rem;font-weight:800;color:#2563eb">${formatNumber(sek)}</span>
+                ${kab > 0 ? `<span style="font-size:0.7rem;color:${shareColor};font-weight:700;margin-left:4px">(${sharePct}%)</span>` : ''}
+            </td>
+            <td class="py-3 pr-4 text-right">
+                <span style="font-size:0.875rem;font-weight:700;color:#475569">${formatNumber(kab)}</span>
+            </td>
+            <td class="py-3 text-right">
+                <span style="font-size:0.875rem;font-weight:700;color:#94a3b8">${formatNumber(nas)}</span>
+            </td>
+        </tr>`;
+    }).join('');
+
+    // Render chart peserta
+    const canvas = document.getElementById('chart-peserta');
+    if (!canvas) return;
+    if (pesertaChart) { pesertaChart.destroy(); pesertaChart = null; }
+
+    const labels  = valid.map(s => s.code);
+    const dataSek = valid.map(s => s.peserta?.sekolah || 0);
+    const dataKab = valid.map(s => s.peserta?.kabupaten || 0);
+
+    const ctx = canvas.getContext('2d');
+    pesertaChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'SMAN 2 Mengwi',
+                    data: dataSek,
+                    backgroundColor: 'rgba(37, 99, 235, 0.8)',
+                    borderColor: '#2563eb',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    order: 1
+                },
+                {
+                    label: 'Kab. Badung',
+                    data: dataKab,
+                    backgroundColor: 'rgba(148, 163, 184, 0.3)',
+                    borderColor: 'rgba(148,163,184,0.6)',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    order: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { color: '#475569', font: { family: 'Inter', size: 11, weight: 'bold' } }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ` ${ctx.dataset.label}: ${formatNumber(ctx.parsed.y)} siswa`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#64748b', font: { family: 'Inter', size: 10, weight: 'bold' } }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(0,0,0,0.04)' },
+                    ticks: {
+                        color: '#94a3b8',
+                        font: { family: 'Inter', size: 10 },
+                        callback: v => formatNumber(v)
+                    }
+                }
+            }
+        }
     });
 }
 

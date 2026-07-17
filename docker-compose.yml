@@ -1,0 +1,14 @@
+services:
+  hasiltka:
+    build: .
+    container_name: hasiltka
+    hostname: hasiltka
+    restart: unless-stopped
+    ports:
+      - "5013:3000"
+    networks:
+      - nginx-proxy-manager_default
+
+networks:
+  nginx-proxy-manager_default:
+    external: true

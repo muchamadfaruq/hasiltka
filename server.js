@@ -21,9 +21,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 const BASE_API_URL = 'https://tka.kemendikdasmen.go.id/hasiltka/hasil-api-2026/api/services/apps/';
 const SECRET_KEY = 'KJ2HJ3LK45JH23K4JH5234H5234K5JH232K3J5KL';
 
-// Cache untuk SMAN 2 Mengwi summary
+// Cache untuk SMAN 2 Mengwi summary (reset saat restart)
 let sman2MengwiCache = null;
 
+// Endpoint untuk reset cache (force refresh)
 // Helper Enkripsi
 function encryptData(dataStr) {
     try {
@@ -326,13 +327,26 @@ app.get('/api/sman2mengwi/summary', async (req, res) => {
                 const kabAvg = calculateAverage(kabRes.data?.elemen_summary);
                 const nasAvg = calculateAverage(nasRes.data?.elemen_summary);
 
+                // Ambil jumlah peserta dari by_level
+                const byLevel = sekRes.data?.by_level || {};
+                const pesertaSekolah   = byLevel.sekolah?.total_peserta   || sekRes.data?.total_peserta || 0;
+                const pesertaKabupaten = byLevel.kabupaten?.total_peserta || 0;
+                const pesertaProvinsi  = byLevel.provinsi?.total_peserta  || 0;
+                const pesertaNasional  = byLevel.nasional?.total_peserta  || 0;
+
                 return {
                     kd_mapel: subj.kd,
                     code: subj.code,
                     name: subj.name,
                     sekolah: sekAvg,
                     kabupaten: kabAvg,
-                    nasional: nasAvg
+                    nasional: nasAvg,
+                    peserta: {
+                        sekolah: pesertaSekolah,
+                        kabupaten: pesertaKabupaten,
+                        provinsi: pesertaProvinsi,
+                        nasional: pesertaNasional
+                    }
                 };
             } catch (err) {
                 console.error(`Error fetching summary for ${subj.name}:`, err);

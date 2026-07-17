@@ -38,7 +38,7 @@
     <!-- Local Chart.js -->
     <script src="chart.js"></script>
     <!-- Cache buster to force load the latest changes -->
-    <script src="app.js?v=1.0.8" defer></script>
+    <script src="app.js?v=1.1.0" defer></script>
 
     <!-- Custom CSS Styles -->
     <style>
@@ -551,7 +551,7 @@
         <aside class="w-full md:w-[260px] bg-white border-b md:border-b-0 md:border-r border-slate-200 p-5 md:p-8 flex flex-col flex-shrink-0">
             <div class="flex items-center gap-3 mb-6 md:mb-10">
                 <!-- Integrated SMAN 2 Mengwi Official Logo -->
-                <img src="https://portal.sman2mengwi.sch.id/img/Logo%20Dwisma.png" alt="Logo SMAN 2 Mengwi" class="w-10 h-10 object-contain flex-shrink-0">
+                <img src="https://dwisma.id/img/Logo%20Dwisma.png" alt="Logo SMAN 2 Mengwi" class="w-10 h-10 object-contain flex-shrink-0">
                 <div>
                     <h2 class="text-xs font-bold tracking-tight text-slate-900 leading-tight">SMAN 2 Mengwi</h2>
                     <span class="text-[10px] text-slate-400 font-medium">Portal Analisis TKA</span>
@@ -583,7 +583,7 @@
             <header class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-5 mb-8 pb-6 border-b border-slate-200">
                 <div class="page-info flex items-center gap-4">
                     <!-- School Logo in main header -->
-                    <img src="https://portal.sman2mengwi.sch.id/img/Logo%20Dwisma.png" alt="Logo SMAN 2 Mengwi" class="w-12 h-12 object-contain hidden sm:block">
+                    <img src="https://dwisma.id/img/Logo%20Dwisma.png" alt="Logo SMAN 2 Mengwi" class="w-12 h-12 object-contain hidden sm:block">
                     <div>
                         <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight mb-1 text-slate-900">SMA Negeri 2 Mengwi</h1>
                         <p class="text-slate-500 text-sm md:text-base">NPSN: 50101684 • Kab. Badung, Provinsi Bali • Akreditasi: A</p>
@@ -713,7 +713,7 @@
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                     <!-- SMAN 2 Mengwi School Profile Card with Integrated Logo -->
                     <div class="lg:col-span-2 bg-white border border-slate-200 p-6 md:p-8 rounded-2xl relative overflow-hidden shadow-sm flex flex-col sm:flex-row sm:items-center gap-5">
-                        <img src="https://portal.sman2mengwi.sch.id/img/Logo%20Dwisma.png" alt="Logo SMAN 2 Mengwi" class="w-16 h-16 object-contain flex-shrink-0">
+                        <img src="https://dwisma.id/img/Logo%20Dwisma.png" alt="Logo SMAN 2 Mengwi" class="w-16 h-16 object-contain flex-shrink-0">
                         <div>
                             <span class="bg-blue-50 text-blue-600 border border-blue-100 text-[10px] uppercase font-bold tracking-wider px-3 py-1 rounded-lg inline-block mb-2">Profil Sekolah</span>
                             <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 leading-tight">SMA Negeri 2 Mengwi</h1>
@@ -779,6 +779,40 @@
                         <p class="text-xs md:text-sm text-slate-500 font-semibold">Tabel jabaran perbandingan nilai rerata daya serap SMAN 2 Mengwi terhadap Kabupaten Badung dan Rerata Nasional.</p>
                     </div>
 
+                    <!-- Statistik Jumlah Peserta TKA -->
+                    <div class="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm mb-8" id="peserta-section">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-900 mb-1">Jumlah Peserta TKA per Mata Pelajaran</h2>
+                                <p class="text-xs text-slate-400 font-semibold">Perbandingan jumlah siswa SMAN 2 Mengwi yang ikut TKA vs Kabupaten Badung dan Nasional</p>
+                            </div>
+                            <!-- Summary badges -->
+                            <div class="flex flex-wrap gap-2" id="peserta-total-badges">
+                                <!-- Rendered dynamically -->
+                            </div>
+                        </div>
+                        <!-- Tabel peserta per mapel -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm" id="peserta-table">
+                                <thead>
+                                    <tr class="border-b border-slate-100">
+                                        <th class="text-left pb-3 text-[10px] uppercase tracking-wider text-slate-400 font-bold pr-4">Mata Pelajaran</th>
+                                        <th class="text-right pb-3 text-[10px] uppercase tracking-wider text-blue-600 font-bold pr-4 whitespace-nowrap">SMAN 2 Mengwi</th>
+                                        <th class="text-right pb-3 text-[10px] uppercase tracking-wider text-slate-400 font-bold pr-4 whitespace-nowrap">Kab. Badung</th>
+                                        <th class="text-right pb-3 text-[10px] uppercase tracking-wider text-slate-400 font-bold whitespace-nowrap">Nasional</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="peserta-table-body">
+                                    <!-- Rendered dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Chart peserta -->
+                        <div class="relative mt-6 h-[300px] w-full" id="peserta-chart-container">
+                            <canvas id="chart-peserta"></canvas>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8" id="sman-subjects-grid">
                         <!-- Subject cards rendered dynamically -->
                     </div>
@@ -787,7 +821,7 @@
                     <div class="hidden mt-12 border-t border-slate-200 pt-10" id="sman-subject-detail-section">
                         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
                             <div class="flex items-center gap-3">
-                                <img src="https://portal.sman2mengwi.sch.id/img/Logo%20Dwisma.png" alt="Logo SMAN 2 Mengwi" class="w-10 h-10 object-contain">
+                                <img src="https://dwisma.id/img/Logo%20Dwisma.png" alt="Logo SMAN 2 Mengwi" class="w-10 h-10 object-contain">
                                 <div>
                                     <span class="bg-blue-50 text-blue-600 border border-blue-100 text-[10px] uppercase font-bold tracking-wider px-3 py-1 rounded-lg inline-block mb-1">Analisis Tingkat Soal</span>
                                     <h2 class="text-xl font-extrabold text-slate-900" id="sman-detail-title">Bahasa Indonesia</h2>
