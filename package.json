@@ -1,0 +1,17 @@
+{
+  "name": "tka-dashboard",
+  "version": "1.0.0",
+  "description": "Dashboard Analisis Hasil TKA Kemendikdasmen",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "crypto-js": "^4.2.0",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1"
+  }
+}
