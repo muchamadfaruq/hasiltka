@@ -267,16 +267,50 @@ async function initializeApp() {
             }
         }
 
+        function updateSchoolNameLabels() {
+            let schoolName = "SMA NEGERI 2 MENGWI";
+            if (selectSekolah && selectSekolah.options && selectSekolah.options[selectSekolah.selectedIndex]) {
+                schoolName = selectSekolah.options[selectSekolah.selectedIndex].text.trim();
+            }
+
+            let rayonName = "KABUPATEN BADUNG";
+            if (selectRayon && selectRayon.options && selectRayon.options[selectRayon.selectedIndex]) {
+                rayonName = selectRayon.options[selectRayon.selectedIndex].text.trim();
+            }
+
+            let provName = "BALI";
+            if (selectProvinsi && selectProvinsi.options && selectProvinsi.options[selectProvinsi.selectedIndex]) {
+                provName = selectProvinsi.options[selectProvinsi.selectedIndex].text.trim();
+            }
+
+            // 1. Global Header Title & Info
+            const elGlobalHeader = document.getElementById('global-header-school-name');
+            if (elGlobalHeader) elGlobalHeader.textContent = schoolName;
+
+            const elGlobalHeaderInfo = document.getElementById('global-header-school-info');
+            if (elGlobalHeaderInfo) elGlobalHeaderInfo.textContent = `${rayonName}, ${provName}`;
+
+            // 2. Tab 1 Stat Card Label
+            const elCardLabel = document.getElementById('label-school-card');
+            if (elCardLabel) elCardLabel.textContent = schoolName.toUpperCase();
+
+            // 3. Tab 2 Title & Subtitle
+            const elTab2Title = document.getElementById('tab2-school-title');
+            if (elTab2Title) elTab2Title.textContent = schoolName;
+
+            const elTab2Info = document.getElementById('tab2-school-info');
+            if (elTab2Info) elTab2Info.textContent = `${rayonName}, ${provName}`;
+
+            const elTab2Sub = document.getElementById('tab2-school-subtitle');
+            if (elTab2Sub) elTab2Sub.textContent = `Perbandingan daya serap ${schoolName} terhadap ${rayonName} dan Nasional untuk semua mata pelajaran`;
+        }
+
         function reloadCurrentActiveTab() {
+            updateSchoolNameLabels();
+
             const valMapel = selectMapel ? selectMapel.value : '';
             if (peringkatSelectMapel) peringkatSelectMapel.value = valMapel;
             if (analisisSoalSelectMapel) analisisSoalSelectMapel.value = valMapel;
-
-            // Sync global header school title if selected
-            if (selectSekolah && selectSekolah.options[selectSekolah.selectedIndex]) {
-                const elTitle = document.getElementById('global-header-school-name');
-                if (elTitle) elTitle.textContent = selectSekolah.options[selectSekolah.selectedIndex].text;
-            }
 
             if (dashboardView && !dashboardView.classList.contains('hidden')) {
                 loadDashboardData(valMapel);
