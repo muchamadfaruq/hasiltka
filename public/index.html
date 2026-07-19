@@ -684,11 +684,36 @@
                         </div>
                     </div>
                     
-                    <!-- Filters Grid -->
-                    <div class="bg-white border border-slate-200 p-4 rounded-2xl flex items-center gap-4 shadow-sm">
-                        <div class="flex flex-col gap-1.5 w-[260px]">
+                    <!-- Regional & Mapel Filters Grid -->
+                    <div class="bg-white border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row flex-wrap items-center gap-4 shadow-sm">
+                        <!-- Select Provinsi -->
+                        <div class="flex flex-col gap-1.5 min-w-[160px] flex-grow sm:flex-grow-0">
+                            <label for="select-provinsi" class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Pilih Provinsi</label>
+                            <select id="select-provinsi" class="custom-select px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer w-full">
+                                <option value="22" selected>BALI</option>
+                            </select>
+                        </div>
+
+                        <!-- Select Rayon/Kabupaten -->
+                        <div class="flex flex-col gap-1.5 min-w-[180px] flex-grow sm:flex-grow-0">
+                            <label for="select-rayon" class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Pilih Kab / Kota</label>
+                            <select id="select-rayon" class="custom-select px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer w-full">
+                                <option value="2209" selected>KABUPATEN BADUNG</option>
+                            </select>
+                        </div>
+
+                        <!-- Select Sekolah -->
+                        <div class="flex flex-col gap-1.5 min-w-[200px] flex-grow sm:flex-grow-0">
+                            <label for="select-sekolah" class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Pilih Sekolah</label>
+                            <select id="select-sekolah" class="custom-select px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer w-full">
+                                <option value="U22090017" selected>SMA NEGERI 2 MENGWI</option>
+                            </select>
+                        </div>
+
+                        <!-- Select Mata Pelajaran -->
+                        <div class="flex flex-col gap-1.5 min-w-[200px] flex-grow sm:flex-grow-0">
                             <label for="select-mapel" class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Pilih Mata Pelajaran</label>
-                            <select id="select-mapel" class="custom-select px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer w-full">
+                            <select id="select-mapel" class="custom-select px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer w-full">
                                 <option value="" disabled selected>Memuat mata pelajaran...</option>
                             </select>
                         </div>

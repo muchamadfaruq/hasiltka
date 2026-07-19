@@ -17,12 +17,15 @@ let rawSmanHierarchy = []; // Caches the raw hierarchy data for SMAN 2 Mengwi De
 let rawSmanElemenSummary = [];
 let rawSmanKdMapel = '';
 
-// Locked SMAN 2 Mengwi Region Codes
-const SMAN_PROP = "22";     // Bali
-const SMAN_RAYON = "2209";   // Kab. Badung
-const SMAN_SEK = "U22090017"; // SMA Negeri 2 Mengwi
+// Dynamic Region & School Codes (Defaults to SMAN 2 Mengwi, Kab. Badung, Bali)
+let SMAN_PROP = "22";     // Bali
+let SMAN_RAYON = "2209";   // Kab. Badung
+let SMAN_SEK = "U22090017"; // SMA Negeri 2 Mengwi
 
 // DOM Elements
+const selectProvinsi = document.getElementById('select-provinsi');
+const selectRayon = document.getElementById('select-rayon');
+const selectSekolah = document.getElementById('select-sekolah');
 const selectMapel = document.getElementById('select-mapel');
 
 const stateLoading = document.getElementById('state-loading');
@@ -203,6 +206,11 @@ async function initializeApp() {
     try {
         setViewState('loading');
 
+        // 0. Populate Regional Selectors (Provinsi, Rayon, Sekolah)
+        await loadProvinsiDropdown();
+        await loadRayonDropdown(SMAN_PROP);
+        await loadSekolahDropdown(SMAN_RAYON);
+
         // 1. Fetch Mapel
         const resMapel = await fetch('/api/mapel');
         const mapelJson = await resMapel.json();
@@ -272,6 +280,40 @@ async function initializeApp() {
             }
         });
 
+        // Add Event Listeners for Regional Filters (Provinsi, Rayon, Sekolah)
+        if (selectProvinsi) {
+            selectProvinsi.addEventListener('change', async () => {
+                SMAN_PROP = selectProvinsi.value;
+                await loadRayonDropdown(SMAN_PROP);
+                if (selectRayon && selectRayon.options.length > 0) {
+                    SMAN_RAYON = selectRayon.value;
+                    await loadSekolahDropdown(SMAN_RAYON);
+                    if (selectSekolah && selectSekolah.options.length > 0) {
+                        SMAN_SEK = selectSekolah.value;
+                    }
+                }
+                loadDashboardData(selectMapel.value);
+            });
+        }
+
+        if (selectRayon) {
+            selectRayon.addEventListener('change', async () => {
+                SMAN_RAYON = selectRayon.value;
+                await loadSekolahDropdown(SMAN_RAYON);
+                if (selectSekolah && selectSekolah.options.length > 0) {
+                    SMAN_SEK = selectSekolah.value;
+                }
+                loadDashboardData(selectMapel.value);
+            });
+        }
+
+        if (selectSekolah) {
+            selectSekolah.addEventListener('change', () => {
+                SMAN_SEK = selectSekolah.value;
+                loadDashboardData(selectMapel.value);
+            });
+        }
+
         // Hamburger Menu Logic for Mobile Screens
         const btnHamburger = document.getElementById('btn-hamburger');
         const mobileMenuWrapper = document.getElementById('mobile-menu-wrapper');
@@ -332,6 +374,57 @@ async function initializeApp() {
             } catch (e) {
                 console.warn('[Cache Widget] Cannot fetch stats:', e);
             }
+        }
+
+        async function loadProvinsiDropdown() {
+            if (!selectProvinsi) return;
+            try {
+                const res = await fetch('/api/provinsi');
+                const json = await res.json();
+                const list = json.data || [];
+                selectProvinsi.innerHTML = '';
+                list.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.kd_prop;
+                    opt.textContent = (p.prop || p.nm_prop || p.kd_prop).trim();
+                    if (p.kd_prop === SMAN_PROP) opt.selected = true;
+                    selectProvinsi.appendChild(opt);
+                });
+            } catch(e) { console.warn('Failed loading provinsi:', e); }
+        }
+
+        async function loadRayonDropdown(kdProp) {
+            if (!selectRayon) return;
+            try {
+                const res = await fetch(`/api/rayon?kd_prop=${kdProp}`);
+                const json = await res.json();
+                const list = json.data || [];
+                selectRayon.innerHTML = '';
+                list.forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r.kd_rayon;
+                    opt.textContent = (r.rayon || r.nm_rayon || r.kd_rayon).trim();
+                    if (r.kd_rayon === SMAN_RAYON) opt.selected = true;
+                    selectRayon.appendChild(opt);
+                });
+            } catch(e) { console.warn('Failed loading rayon:', e); }
+        }
+
+        async function loadSekolahDropdown(kdRayon) {
+            if (!selectSekolah) return;
+            try {
+                const res = await fetch(`/api/sekolah?kd_rayon=${kdRayon}`);
+                const json = await res.json();
+                const list = json.data || [];
+                selectSekolah.innerHTML = '';
+                list.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.kd_sek;
+                    opt.textContent = (s.nama_sek || s.nm_sek || s.kd_sek).trim();
+                    if (s.kd_sek === SMAN_SEK) opt.selected = true;
+                    selectSekolah.appendChild(opt);
+                });
+            } catch(e) { console.warn('Failed loading sekolah:', e); }
         }
 
         navDashboard.addEventListener('click', (e) => {

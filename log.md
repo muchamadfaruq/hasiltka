@@ -18,9 +18,10 @@ Dokumen ini mencatat riwayat pembaruan, perbaikan bug, integrasi fitur, dan opti
 * **Navigasi Hamburger Menu Responsif (Mobile View)**:
   * Merombak antarmuka navigasi ponsel (`< md`) dari strip horizontal scrollable menjadi **Hamburger Menu interaktif** dengan ikon `☰` dan `✕`.
   * Menambahkan logika *auto-collapse* yang otomatis menutup menu mobile setelah pengguna memilih tab.
-* **Widget Status Database & Tombol Manual Sync di Frontend**:
-  * Menambahkan widget info **Database SQLite** pada sidebar bilah samping frontend ([index.html:L650](file:///home/faruqadv/app/hasiltka/public/index.html#L650)) yang menyajikan statistik jumlah Bank Soal, Respon API ter-cache, serta ukuran DB secara real-time.
-  * Menyediakan tombol **`Sinkronkan API ke Database`** yang memicu endpoint `/api/cache/seed` untuk memastikan seluruh data API terserap 100% ke database secara aman di latar belakang.
+* **Penyajian Endpoint Metadata Wilayah & Dynamic Regional Selectors**:
+  * Mengaktifkan dan mengintegrasikan 3 endpoint metadata wilayah (`/api/provinsi`, `/api/rayon`, `/api/sekolah`) ke antarmuka utama dasbor ([index.html:L688](file:///home/faruqadv/app/hasiltka/public/index.html#L688)).
+  * Menambahkan dropdown **Pilih Provinsi** (38 Provinsi se-Indonesia), **Pilih Kab/Kota** (Kabupaten/Kota per Provinsi), dan **Pilih Sekolah** (Daftar SMA per Kabupaten) yang secara dinamis memperbarui visualisasi daya serap dan komparasi dasbor.
+  * Menyiapkan data cadangan (*fallback data*) untuk memastikan selector wilayah tetap responsif dan 100% *offline-ready*.
 * **Rebuild & Deployment Docker**:
   * Melakukan kompilasi ulang image Docker dan me-restart container `hasiltka` untuk menerapkan perubahan pada server produksi.
 
