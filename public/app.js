@@ -293,6 +293,43 @@ async function initializeApp() {
                     if (iconClose) iconClose.classList.add('hidden');
                 }
             });
+        // Database Cache Stats & Sync Handler
+        const btnSyncDb = document.getElementById('btn-sync-db');
+        if (btnSyncDb) {
+            btnSyncDb.addEventListener('click', async () => {
+                btnSyncDb.disabled = true;
+                btnSyncDb.innerHTML = '⚡ Menyerap API ke DB...';
+                try {
+                    const res = await fetch('/api/cache/seed', { method: 'POST' });
+                    const json = await res.json();
+                    alert(json.message || "Penyerapan API ke database SQLite3 telah dimulai!");
+                    setTimeout(loadDbCacheStats, 2500);
+                } catch (err) {
+                    alert("Gagal menyerap data: " + err.message);
+                } finally {
+                    btnSyncDb.disabled = false;
+                    btnSyncDb.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Sinkronkan API ke Database';
+                }
+            });
+        }
+        loadDbCacheStats();
+
+        async function loadDbCacheStats() {
+            const elDetails = document.getElementById('db-status-details');
+            if (!elDetails) return;
+            try {
+                const res = await fetch('/api/cache/stats');
+                const json = await res.json();
+                if (json.success && json.stats) {
+                    const { questionsCount, apiCacheCount, dbSizeMB } = json.stats;
+                    elDetails.innerHTML = `
+                        <div>• Bank Soal: <strong class="text-slate-800">${questionsCount} Soal</strong></div>
+                        <div>• Cache API: <strong class="text-slate-800">${apiCacheCount} Respon</strong> (${dbSizeMB} MB)</div>
+                    `;
+                }
+            } catch (e) {
+                console.warn('[Cache Widget] Cannot fetch stats:', e);
+            }
         }
 
         navDashboard.addEventListener('click', (e) => {

@@ -89,6 +89,40 @@ async function seed() {
         return;
     }
 
+    // 1.5. Seed listprovinsi, listrayon (Bali), and listsekolah (Badung)
+    try {
+        if (!db.getApiCache('listprovinsi', {})) {
+            console.log('[Fetching] listprovinsi...');
+            const provRes = await fetchFromTkaApi('listprovinsi', {});
+            db.setApiCache('listprovinsi', {}, provRes);
+            console.log('   ✓ Cached listprovinsi');
+        } else {
+            console.log('   ✓ Cached listprovinsi (Hit)');
+        }
+
+        const keyRayon = { kd_prop: '22' };
+        if (!db.getApiCache('listrayon', keyRayon)) {
+            console.log('[Fetching] listrayon (Bali)...');
+            const rayonRes = await fetchFromTkaApi('listrayon', keyRayon);
+            db.setApiCache('listrayon', keyRayon, rayonRes);
+            console.log('   ✓ Cached listrayon (Bali)');
+        } else {
+            console.log('   ✓ Cached listrayon Bali (Hit)');
+        }
+
+        const keySek = { kd_rayon: '2209', jenjang: 'SMA', jenis_sek: '', status_sek: '' };
+        if (!db.getApiCache('listsekolah', keySek)) {
+            console.log('[Fetching] listsekolah (Badung)...');
+            const sekRes = await fetchFromTkaApi('listsekolah', keySek);
+            db.setApiCache('listsekolah', keySek, sekRes);
+            console.log('   ✓ Cached listsekolah (Badung)');
+        } else {
+            console.log('   ✓ Cached listsekolah Badung (Hit)');
+        }
+    } catch(e) {
+        console.error('Error pre-caching regional metadata:', e.message);
+    }
+
     console.log(`Seeding ${mapelList.length} subjects into SQLite...`);
 
     const kd_prop = '22';
@@ -140,7 +174,7 @@ async function seed() {
         }
 
         // 4. Sekolah SMAN 2 Mengwi (Dashboard)
-        const keySek = { kd_mapel, kd_jenjang: 'T', jenis_sekolah: 'T', status_sekolah: 'T', kd_prop, kd_rayon, kd_sek };
+        const keySek = { kd_mapel, kd_jenjang: 'T', jenis_sekolah: 'T', status_sekolah: 'T', kd_prop, kd_rayon, kd_sek, limit: 10, offset: 0 };
         if (!db.getApiCache('daya-serap/sekolah', keySek)) {
             try {
                 const res = await fetchFromTkaApi('daya-serap/sekolah', keySek);

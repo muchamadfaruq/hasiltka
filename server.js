@@ -919,6 +919,20 @@ app.all('/api/cache/clear', (req, res) => {
     }
 });
 
+// 13.5. Trigger Database Seeding / Sync API Endpoint
+app.all('/api/cache/seed', (req, res) => {
+    try {
+        const { exec } = require('child_process');
+        exec('node seed_all.js', (err, stdout, stderr) => {
+            if (err) console.error('[Seed Error]:', err.message);
+            else console.log('[Seed Complete]: Database updated');
+        });
+        res.json({ success: true, message: "Penyerapan data API ke database SQLite3 telah dijalankan di latar belakang!" });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 // 14. Periodic Background Sync Worker (Syncs DB quietly every 6 hours)
 function startPeriodicSync() {
     const SIX_HOURS = 6 * 60 * 60 * 1000;
