@@ -290,11 +290,14 @@ async function initializeApp() {
             const elGlobalHeaderInfo = document.getElementById('global-header-school-info');
             if (elGlobalHeaderInfo) elGlobalHeaderInfo.textContent = `${rayonName}, ${provName}`;
 
-            // 2. Tab 1 Stat Card Label
+            // 2. Tab 1 Stat Cards Labels
             const elCardLabel = document.getElementById('label-school-card');
             if (elCardLabel) elCardLabel.textContent = schoolName.toUpperCase();
 
-            // 3. Tab 2 Title & Subtitle
+            const elRayonCardLabel = document.getElementById('label-rayon-card');
+            if (elRayonCardLabel) elRayonCardLabel.textContent = rayonName.toUpperCase();
+
+            // 3. Tab 2 Titles, Headers & Subtitles
             const elTab2Title = document.getElementById('tab2-school-title');
             if (elTab2Title) elTab2Title.textContent = schoolName;
 
@@ -303,6 +306,16 @@ async function initializeApp() {
 
             const elTab2Sub = document.getElementById('tab2-school-subtitle');
             if (elTab2Sub) elTab2Sub.textContent = `Perbandingan daya serap ${schoolName} terhadap ${rayonName} dan Nasional untuk semua mata pelajaran`;
+
+            const elTab2SekHeader = document.getElementById('th-tab2-sek-header');
+            if (elTab2SekHeader) elTab2SekHeader.textContent = schoolName;
+
+            const elTab2RayonHeader = document.getElementById('th-tab2-rayon-header');
+            if (elTab2RayonHeader) elTab2RayonHeader.textContent = rayonName;
+
+            // 4. Tab 3 Peringkat Header
+            const elPeringkatHeader = document.getElementById('peringkat-header-title');
+            if (elPeringkatHeader) elPeringkatHeader.textContent = `Peringkat Sekolah - ${rayonName}`;
         }
 
         function reloadCurrentActiveTab() {
