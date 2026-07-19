@@ -267,17 +267,35 @@ async function initializeApp() {
             }
         }
 
+        function reloadCurrentActiveTab() {
+            const valMapel = selectMapel ? selectMapel.value : '';
+            if (peringkatSelectMapel) peringkatSelectMapel.value = valMapel;
+            if (analisisSoalSelectMapel) analisisSoalSelectMapel.value = valMapel;
+
+            // Sync global header school title if selected
+            if (selectSekolah && selectSekolah.options[selectSekolah.selectedIndex]) {
+                const elTitle = document.getElementById('global-header-school-name');
+                if (elTitle) elTitle.textContent = selectSekolah.options[selectSekolah.selectedIndex].text;
+            }
+
+            if (dashboardView && !dashboardView.classList.contains('hidden')) {
+                loadDashboardData(valMapel);
+            } else if (sman2mengwiView && !sman2mengwiView.classList.contains('hidden')) {
+                loadSman2MengwiSummaryData();
+            } else if (peringkatView && !peringkatView.classList.contains('hidden')) {
+                loadPeringkatData(valMapel);
+            } else if (analisisSoalView && !analisisSoalView.classList.contains('hidden')) {
+                loadAnalisisSoalData(valMapel);
+            }
+        }
+
         // Add Event Listener for Mapel Filter
         selectMapel.addEventListener('change', () => {
             const val = selectMapel.value;
             if (val) {
                 localStorage.setItem('selected_kd_mapel', val);
-                if (peringkatSelectMapel) peringkatSelectMapel.value = val;
             }
-            loadDashboardData();
-            if (peringkatView && !peringkatView.classList.contains('hidden')) {
-                loadPeringkatData(val);
-            }
+            reloadCurrentActiveTab();
         });
 
         // Add Event Listeners for Regional Filters (Provinsi, Rayon, Sekolah)
@@ -292,7 +310,7 @@ async function initializeApp() {
                         SMAN_SEK = selectSekolah.value;
                     }
                 }
-                loadDashboardData(selectMapel.value);
+                reloadCurrentActiveTab();
             });
         }
 
@@ -303,14 +321,14 @@ async function initializeApp() {
                 if (selectSekolah && selectSekolah.options.length > 0) {
                     SMAN_SEK = selectSekolah.value;
                 }
-                loadDashboardData(selectMapel.value);
+                reloadCurrentActiveTab();
             });
         }
 
         if (selectSekolah) {
             selectSekolah.addEventListener('change', () => {
                 SMAN_SEK = selectSekolah.value;
-                loadDashboardData(selectMapel.value);
+                reloadCurrentActiveTab();
             });
         }
 
