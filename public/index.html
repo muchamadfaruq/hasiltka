@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SMAN 2 Mengwi - Portal Analisis TKA</title>
+    <link rel="icon" type="image/png" href="https://dwisma.id/img/Logo%20Dwisma.png">
+    <link rel="shortcut icon" href="https://dwisma.id/img/Logo%20Dwisma.png">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,10 +37,28 @@
         }
     </script>
 
-    <!-- Local Chart.js -->
     <script src="chart.js"></script>
     <!-- Cache buster to force load the latest changes -->
-    <script src="app.js?v=1.1.0" defer></script>
+    <script src="app.js?v=1.3.4" defer></script>
+    
+    <!-- Fail-safe inline script to ensure correct view is unhidden immediately -->
+    <script>
+      (function() {
+        function checkHash() {
+          var hash = (window.location.hash || '').replace('#', '');
+          if (hash === 'peringkat') {
+            var pView = document.getElementById('peringkat-view');
+            var dView = document.getElementById('dashboard-view');
+            var sView = document.getElementById('sman2mengwi-view');
+            if (pView) pView.classList.remove('hidden');
+            if (dView) dView.classList.add('hidden');
+            if (sView) sView.classList.add('hidden');
+          }
+        }
+        window.addEventListener('DOMContentLoaded', checkHash);
+        window.addEventListener('hashchange', checkHash);
+      })();
+    </script>
 
     <!-- Custom CSS Styles -->
     <style>
@@ -559,13 +579,17 @@
             </div>
             
             <nav class="flex flex-row md:flex-col gap-2 flex-grow overflow-x-auto pb-2 md:pb-0">
-                <a href="#" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 no-underline rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap active sidebar-link active" id="nav-dashboard">
+                <a href="#dashboard" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 no-underline rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap active sidebar-link active" id="nav-dashboard">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                     Analisis Pelajaran
                 </a>
-                <a href="#" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 no-underline rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap sidebar-link" id="nav-sman2mengwi">
+                <a href="#sman2mengwi" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 no-underline rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap sidebar-link" id="nav-sman2mengwi">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
                     Capaian Semua Mapel
+                </a>
+                <a href="#peringkat" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 no-underline rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap sidebar-link" id="nav-peringkat">
+                    <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+                    Peringkat Sekolah
                 </a>
                 <a href="https://tka.kemendikdasmen.go.id/hasiltka" target="_blank" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 no-underline rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
@@ -578,33 +602,32 @@
         </aside>
 
         <!-- Main Content Section (Light Slate Background) -->
-        <main class="flex-grow p-4 md:p-10 overflow-y-auto max-h-screen bg-slate-50">
-            <!-- Header/Filters -->
-            <header class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-5 mb-8 pb-6 border-b border-slate-200">
-                <div class="page-info flex items-center gap-4">
-                    <!-- School Logo in main header -->
-                    <img src="https://dwisma.id/img/Logo%20Dwisma.png" alt="Logo SMAN 2 Mengwi" class="w-12 h-12 object-contain hidden sm:block">
-                    <div>
-                        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight mb-1 text-slate-900">SMA Negeri 2 Mengwi</h1>
-                        <p class="text-slate-500 text-sm md:text-base">NPSN: 50101684 • Kab. Badung, Provinsi Bali • Akreditasi: A</p>
-                    </div>
-                </div>
-                
-                <!-- Filters Grid -->
-                <div class="bg-white border border-slate-200 p-4 rounded-2xl flex items-center gap-4 shadow-sm">
-                    <div class="flex flex-col gap-1.5 w-[260px]">
-                        <label for="select-mapel" class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Pilih Mata Pelajaran</label>
-                        <select id="select-mapel" class="custom-select px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer w-full">
-                            <option value="" disabled selected>Memuat mata pelajaran...</option>
-                        </select>
-                    </div>
-                </div>
-            </header>
-
+        <main class="flex-grow p-4 md:p-10 min-h-screen bg-slate-50">
             <!-- Dashboard Body -->
             <div class="dashboard-body" id="dashboard-view">
+                <!-- Header/Filters -->
+                <header class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-5 mb-8 pb-6 border-b border-slate-200">
+                    <div class="page-info flex items-center gap-4">
+                        <!-- School Logo in main header -->
+                        <img src="https://dwisma.id/img/Logo%20Dwisma.png" alt="Logo SMAN 2 Mengwi" class="w-12 h-12 object-contain hidden sm:block">
+                        <div>
+                            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight mb-1 text-slate-900">SMA Negeri 2 Mengwi</h1>
+                            <p class="text-slate-500 text-sm md:text-base">NPSN: 50101684 • Kab. Badung, Provinsi Bali • Akreditasi: A</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Filters Grid -->
+                    <div class="bg-white border border-slate-200 p-4 rounded-2xl flex items-center gap-4 shadow-sm">
+                        <div class="flex flex-col gap-1.5 w-[260px]">
+                            <label for="select-mapel" class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Pilih Mata Pelajaran</label>
+                            <select id="select-mapel" class="custom-select px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer w-full">
+                                <option value="" disabled selected>Memuat mata pelajaran...</option>
+                            </select>
+                        </div>
+                    </div>
+                </header>
                 <!-- Welcome/State Placeholder -->
-                <div class="flex flex-col items-center justify-center py-20 px-8 text-center" id="state-loading">
+                <div class="flex flex-col items-center justify-center py-20 px-8 text-center hidden" id="state-loading">
                     <div class="spinner mb-6"></div>
                     <p class="text-slate-500 font-medium">Memuat data SMA Negeri 2 Mengwi...</p>
                 </div>
@@ -616,8 +639,8 @@
                     <button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2.5 rounded-xl transition-all duration-200" onclick="window.location.reload()">Coba Lagi</button>
                 </div>
 
-                <!-- Dashboard Content (Hidden by default, shown when data loaded) -->
-                <div class="hidden animate-fade-in" id="main-data-layout">
+                <!-- Dashboard Content (Visible by default) -->
+                <div class="animate-fade-in" id="main-data-layout">
                     <!-- Stats Section (RESTRUCTURED FOR THE 4 COMPARISON LEVELS) -->
                     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                         <!-- SMAN 2 Mengwi (School Score) -->
@@ -852,6 +875,123 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Peringkat Sekolah per Kabupaten View -->
+            <div class="dashboard-body hidden" id="peringkat-view">
+                    <!-- Header Summary Card -->
+                    <div class="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-800 rounded-3xl p-6 md:p-8 text-white shadow-xl mb-8 relative overflow-hidden">
+                        <div class="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
+                            <svg class="w-72 h-72" fill="currentColor" viewBox="0 0 24 24"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                        </div>
+                        <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                            <div class="flex items-center gap-4">
+                                <img src="https://dwisma.id/img/Logo%20Dwisma.png" alt="Logo SMAN 2 Mengwi" class="w-14 h-14 object-contain bg-white/10 p-1.5 rounded-2xl backdrop-blur-md border border-white/20">
+                                <div>
+                                    <span class="bg-white/20 text-white text-[10px] uppercase font-bold tracking-widest px-3 py-1 rounded-full backdrop-blur-md inline-block mb-2 border border-white/20">Analisis Peringkat Wilayah</span>
+                                    <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight" id="peringkat-header-title">Peringkat Sekolah - Kabupaten Badung</h2>
+                                    <p class="text-blue-100 text-xs md:text-sm mt-1" id="peringkat-header-subtitle">Daya Serap Hasil Tes Kompetensi Akademik (TKA) Nasional</p>
+                                </div>
+                            </div>
+                            <!-- Highlight Rank Badge for SMAN 2 Mengwi -->
+                            <div class="bg-white/10 border border-white/20 rounded-2xl p-4 md:p-5 text-center min-w-[200px] backdrop-blur-md self-stretch md:self-auto flex flex-col justify-center">
+                                <span class="text-[10px] text-blue-200 font-bold uppercase tracking-wider block mb-1">POSISI SMAN 2 MENGWI</span>
+                                <div class="text-3xl md:text-4xl font-extrabold text-amber-300 flex items-center justify-center gap-1" id="peringkat-target-badge">
+                                    #-- <span class="text-xs text-white font-normal">dari --</span>
+                                </div>
+                                <span class="text-[11px] text-blue-100 font-semibold mt-1" id="peringkat-target-score">Rerata: --%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter & Search Controls Bar -->
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4 md:p-6 shadow-sm mb-6 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+                        <!-- Subject & Type Selectors -->
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="flex flex-col gap-1 w-full sm:w-auto">
+                                <label class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Mata Pelajaran</label>
+                                <select id="peringkat-select-mapel" class="custom-select px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer min-w-[180px]">
+                                    <option value="ABINW" selected>Bahasa Indonesia</option>
+                                    <option value="AMATW">Matematika</option>
+                                    <option value="ABIGW">Bahasa Inggris</option>
+                                    <option value="APKNP">PPKn</option>
+                                    <option value="AANTP">Antropologi</option>
+                                    <option value="KPKWP">Projek Kreatif dan Kewirausahaan</option>
+                                    <option value="ABINP">Bahasa Indonesia Lanjut</option>
+                                    <option value="AMATP">Matematika Lanjut</option>
+                                    <option value="ABIGP">Bahasa Inggris Lanjut</option>
+                                    <option value="ABIOP">Biologi</option>
+                                    <option value="ASOSP">Sosiologi</option>
+                                    <option value="AEKOP">Ekonomi</option>
+                                    <option value="AKIMP">Kimia</option>
+                                    <option value="ASEJP">Sejarah</option>
+                                    <option value="AFISP">Fisika</option>
+                                    <option value="AGEOP">Geografi</option>
+                                    <option value="AARBP">Bahasa Arab</option>
+                                    <option value="AJEPP">Bahasa Jepang</option>
+                                    <option value="AMANP">Bahasa Mandarin</option>
+                                    <option value="AJRMP">Bahasa Jerman</option>
+                                    <option value="AKORP">Bahasa Korea</option>
+                                    <option value="APRCP">Bahasa Prancis</option>
+                                </select>
+                            </div>
+                            <div class="flex flex-col gap-1 w-full sm:w-auto">
+                                <label class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Filter Status</label>
+                                <select id="peringkat-select-status" class="custom-select px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer min-w-[140px]">
+                                    <option value="all">Semua Sekolah</option>
+                                    <option value="N">SMA Negeri Saja</option>
+                                    <option value="S">SMA Swasta Saja</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Search Input -->
+                        <div class="relative w-full md:w-64">
+                            <input type="text" id="peringkat-search" placeholder="Cari nama sekolah..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:border-blue-600 outline-none transition-all">
+                            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        </div>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div class="flex flex-col items-center justify-center py-12 text-center hidden" id="peringkat-loading">
+                        <div class="spinner mb-4"></div>
+                        <p class="text-slate-500 font-medium text-sm">Menghitung peringkat sekolah Kabupaten Badung...</p>
+                    </div>
+
+                    <!-- Rankings Table Container -->
+                    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden" id="peringkat-table-container">
+                        <div class="px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-slate-50/50">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-slate-800 text-sm">Daftar Peringkat Sekolah</span>
+                                <span class="bg-blue-100 text-blue-700 text-xs font-extrabold px-2.5 py-0.5 rounded-full" id="peringkat-count-badge">Memuat...</span>
+                            </div>
+                            <span class="text-xs text-slate-400 font-medium">Diurutkan berdasarkan Rerata Daya Serap (%)</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="bg-slate-50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+                                        <th class="text-center py-3.5 px-4 w-16">Rank</th>
+                                        <th class="text-left py-3.5 px-4">Nama Sekolah</th>
+                                        <th class="text-center py-3.5 px-4 whitespace-nowrap">NPSN</th>
+                                        <th class="text-center py-3.5 px-4 whitespace-nowrap">Status</th>
+                                        <th class="text-right py-3.5 px-4 whitespace-nowrap">Daya Serap</th>
+                                        <th class="py-3.5 px-4 w-40">Visualisasi Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="peringkat-table-body" class="divide-y divide-slate-100">
+                                    <tr>
+                                        <td colspan="6" class="text-center py-12 text-slate-400 font-semibold text-xs">
+                                            <div class="flex flex-col items-center gap-2">
+                                                <div class="spinner border-2 w-6 h-6 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                                <span>Memuat peringkat sekolah Kabupaten Badung...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
         </main>
     </div>
 

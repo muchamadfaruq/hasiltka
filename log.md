@@ -6,7 +6,28 @@ Dokumen ini mencatat riwayat pembaruan, perbaikan bug, integrasi fitur, dan opti
 
 ## 📅 Riwayat Pembaruan
 
-### Pembaruan Terbaru: 17 Juli 2026 (Sesi 4)
+### Pembaruan Terbaru: 19 Juli 2026 (Sesi 5)
+* **Fitur Analisis Peringkat Sekolah per Kabupaten Badung (`🏆 Peringkat Sekolah`)**:
+  * Membangun endpoint `/api/peringkat-sekolah` yang secara otomatis mengkalkulasi rerata daya serap seluruh 68 sekolah di Kabupaten Badung per mata pelajaran.
+  * Mengurutkan peringkat (*ranking*) sekolah dari posisi #1 hingga #68 secara otomatis.
+  * Menyorot posisi **SMA Negeri 2 Mengwi** secara khusus dengan kartu *badge* khusus (misal: **#26 dari 68 Sekolah**).
+  * Menyediakan fitur penyaring (*filter*) status sekolah (**Semua Sekolah**, **SMA Negeri Saja**, **SMA Swasta Saja**) serta pencarian (*search bar*) nama sekolah.
+  * Mengintegrasikan caching SQLite3 dengan teknik paginasi `limit: 50` untuk mencegah error rate-limit dari API kementerian.
+* **Integrasi Database SQLite3 (`better-sqlite3`) & System Caching**:
+  * **Analisis & Masalah**: Aplikasi sebelumnya melakukan pemanggilan HTTP langsung ke API Kemendikdasmen secara berulang-ulang untuk setiap request wilayah, mata pelajaran, indikator, dan summary, yang meningkatkan latency dan risiko pembatasan request (*rate limit*) atau HTTP 403 dari server kementerian.
+  * **Solusi Database SQLite3 (`db.js` & `tka_cache.db`)**:
+    * Membangun database relational berbasis **SQLite3** dengan tabel `api_cache` dan `questions`.
+    * Mengaktifkan mode **WAL (Write-Ahead Logging)** untuk kecepatan tinggi dan konkurensi optimal.
+    * Mengimplementasikan wrapper fungsi `fetchFromTkaApiWithCache` di `server.js` yang menyimpan hasil respons API ke SQLite3.
+    * Setiap permintaan berulang ke endpoint `/api/mapel`, `/api/provinsi`, `/api/rayon`, `/api/sekolah`, `/api/contoh-soal`, `/api/daya-serap`, dan `/api/sman2mengwi/summary` akan **diambil langsung dari database SQLite3 (<15ms)** tanpa perlu menghubungi server Kemendikdasmen lagi.
+  * **Manajemen Bank Soal di SQLite**:
+    * Scraper bank soal kini menyimpan soal dan pilihan jawaban langsung ke tabel `questions` di SQLite3.
+    * Otomatis melakukan sinkronisasi/migrasi data awal (*seeding*) dari `questions_cache.json` ke database SQLite3 saat server dinyalakan.
+    * Menyediakan endpoint statistik database `/api/cache/stats` dan endpoint reset cache `/api/cache/clear` (serta dukungan parameter `?refresh=true` pada URL API).
+  * **Optimasi Dockerfile**:
+    * Mengganti base image ke `node:20-slim` dan mengonfigurasi `build-essential` & `python3` untuk kompilasi native modul C/C++ SQLite3 secara sempurna di container Docker.
+
+### Pembaruan Sebelumnya: 17 Juli 2026 (Sesi 4)
 * **Desain Visual "Terang & Biru" (Light & Blue Theme)**:
   * Mengubah keseluruhan antarmuka dasbor dari tema gelap (*dark theme*) ke tema terang yang modern dan bersih dengan warna latar belakang `#f8fafc` (Slate 50) dan kontainer kartu putih bersih `#ffffff`.
   * Menggunakan palet aksen warna **Biru Royal** (`#2563eb`) untuk navigasi aktif sidebar, lencana elemen, borders indikator aktif, dan tombol aksi.

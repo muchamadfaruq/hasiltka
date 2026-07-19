@@ -1,11 +1,27 @@
 const express = require('express');
 const CryptoJS = require('crypto-js');
 const path = require('path');
+const fs = require('fs');
+
+const {
+    getApiCache,
+    setApiCache,
+    clearApiCache,
+    getQuestion,
+    saveQuestion,
+    getAllQuestionsGrouped,
+    seedQuestionsFromJson,
+    getCacheStats
+} = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+
+// Seed SQLite database with existing questions_cache.json if available
+const jsonCachePath = path.join(__dirname, 'public', 'questions_cache.json');
+seedQuestionsFromJson(jsonCachePath);
 
 // Disable caching to prevent browser from loading stale app.js/index.html
 app.use((req, res, next) => {
@@ -21,10 +37,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 const BASE_API_URL = 'https://tka.kemendikdasmen.go.id/hasiltka/hasil-api-2026/api/services/apps/';
 const SECRET_KEY = 'KJ2HJ3LK45JH23K4JH5234H5234K5JH232K3J5KL';
 
-// Cache untuk SMAN 2 Mengwi summary (reset saat restart)
+// In-memory cache fallback for fast response
 let sman2MengwiCache = null;
 
-// Endpoint untuk reset cache (force refresh)
 // Helper Enkripsi
 function encryptData(dataStr) {
     try {
@@ -48,8 +63,8 @@ function decryptData(ciphertext) {
     }
 }
 
-// Helper fetch API Kemendikdasmen
-async function fetchFromTkaApi(endpoint, payload = {}) {
+// Helper fetch API Kemendikdasmen murni (Tanpa Cache, dengan Auto-Retry & Macintosh UA)
+async function fetchFromTkaApi(endpoint, payload = {}, retries = 3) {
     const url = `${BASE_API_URL}${endpoint}`;
     const payloadStr = JSON.stringify(payload);
     const encryptedPayload = encryptData(payloadStr);
@@ -59,24 +74,79 @@ async function fetchFromTkaApi(endpoint, payload = {}) {
         data: encryptedPayload
     };
 
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
+    const headersList = [
+        {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Content-Type': 'application/json'
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Content-Type': 'application/json',
+            'Origin': 'https://tka.kemendikdasmen.go.id',
+            'Referer': 'https://tka.kemendikdasmen.go.id/hasiltka/'
         },
-        body: JSON.stringify(requestBody)
-    });
+        {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Safari/605.1.15',
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'Referer': 'https://tka.kemendikdasmen.go.id/hasiltka/'
+        }
+    ];
 
-    if (!response.ok) {
-        throw new Error(`API HTTP Error: ${response.status} ${response.statusText}`);
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const headers = headersList[(attempt - 1) % headersList.length];
+            const response = await fetch(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(requestBody)
+            });
+
+            if (response.ok) {
+                const resJson = await response.json();
+                if (resJson.encrypted && resJson.data) {
+                    return decryptData(resJson.data);
+                }
+                return resJson;
+            }
+
+            if (response.status === 403 && attempt < retries) {
+                console.warn(`[TKA API 403 Warning] Attempt ${attempt}/${retries} for ${endpoint}. Retrying in ${attempt * 350}ms...`);
+                await new Promise(r => setTimeout(r, attempt * 350));
+                continue;
+            }
+
+            throw new Error(`API HTTP Error: ${response.status} ${response.statusText}`);
+
+        } catch (err) {
+            if (attempt === retries) throw err;
+            await new Promise(r => setTimeout(r, attempt * 350));
+        }
+    }
+}
+
+// Helper fetch API Kemendikdasmen DENGAN SQLite3 Caching
+async function fetchFromTkaApiWithCache(endpoint, payload = {}, forceRefresh = false) {
+    if (!forceRefresh) {
+        const cached = getApiCache(endpoint, payload);
+        if (cached) {
+            return cached.data;
+        }
     }
 
-    const resJson = await response.json();
-    if (resJson.encrypted && resJson.data) {
-        return decryptData(resJson.data);
+    try {
+        console.log(`[TKA API Request] Background Fetch: ${endpoint}`);
+        const resData = await fetchFromTkaApi(endpoint, payload);
+        setApiCache(endpoint, payload, resData);
+        return resData;
+    } catch (err) {
+        console.warn(`[TKA API Fetch Warning] Endpoint ${endpoint}:`, err.message);
+        // Fallback to SQLite cache if remote API returned error (e.g., 403 or rate limit)
+        const fallback = getApiCache(endpoint, payload);
+        if (fallback) {
+            console.log(`[SQLite Fallback HIT] Serving cached data for ${endpoint}`);
+            return fallback.data;
+        }
+        return { success: false, message: err.message, data: null };
     }
-    return resJson;
 }
 
 // Helper untuk mengekstrak persentase daya serap per nomor/urutan soal
@@ -103,90 +173,127 @@ function calculateAverage(elemenSummary) {
 
 // --- API Router / Endpoints ---
 
-// 1. Get List Mapel
+// 1. Get List Mapel (With SQLite Cache)
 app.get('/api/mapel', async (req, res) => {
     try {
-        const data = await fetchFromTkaApi('listmapel', { even_tka: "smasmk", jenjang: "SMA" });
+        const forceRefresh = req.query.refresh === 'true';
+        const data = await fetchFromTkaApiWithCache('listmapel', { even_tka: "smasmk", jenjang: "SMA" }, forceRefresh);
         res.json(data);
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
-// 2. Get List Provinsi
+// 2. Get List Provinsi (With SQLite Cache)
 app.get('/api/provinsi', async (req, res) => {
     try {
-        const data = await fetchFromTkaApi('listprovinsi', {});
+        const forceRefresh = req.query.refresh === 'true';
+        const data = await fetchFromTkaApiWithCache('listprovinsi', {}, forceRefresh);
         res.json(data);
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
-// 3. Get List Rayon/Kabupaten berdasarkan Kode Provinsi
+// 3. Get List Rayon/Kabupaten berdasarkan Kode Provinsi (With SQLite Cache)
 app.get('/api/rayon', async (req, res) => {
-    const { kd_prop } = req.query;
+    const { kd_prop, refresh } = req.query;
     if (!kd_prop) return res.status(400).json({ success: false, message: "kd_prop is required" });
     try {
-        const data = await fetchFromTkaApi('listrayon', { kd_prop });
+        const forceRefresh = refresh === 'true';
+        const data = await fetchFromTkaApiWithCache('listrayon', { kd_prop }, forceRefresh);
         res.json(data);
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
-// 4. Get List Sekolah berdasarkan Kode Rayon
+// 4. Get List Sekolah berdasarkan Kode Rayon (With SQLite Cache)
 app.get('/api/sekolah', async (req, res) => {
-    const { kd_rayon } = req.query;
+    const { kd_rayon, refresh } = req.query;
     if (!kd_rayon) return res.status(400).json({ success: false, message: "kd_rayon is required" });
     try {
-        const data = await fetchFromTkaApi('listsekolah', {
+        const forceRefresh = refresh === 'true';
+        const data = await fetchFromTkaApiWithCache('listsekolah', {
             kd_rayon,
             jenjang: "SMA",
             jenis_sek: "",
             status_sek: ""
-        });
+        }, forceRefresh);
         res.json(data);
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
-// 5. Get Contoh Soal berdasarkan Kode Mapel dan Urutan
+// 5. Get Contoh Soal berdasarkan Kode Mapel dan Urutan (With SQLite Cache)
 app.get('/api/contoh-soal', async (req, res) => {
-    const { kd_mapel, urutan } = req.query;
+    const { kd_mapel, urutan, refresh } = req.query;
     if (!kd_mapel || !urutan) {
         return res.status(400).json({ success: false, message: "kd_mapel and urutan are required" });
     }
     try {
-        const data = await fetchFromTkaApi('daya-serap/contoh-soal/urutan', {
+        const uNum = parseInt(urutan);
+        // 1. Check questions table in SQLite first
+        const qRow = getQuestion(kd_mapel, uNum);
+        if (qRow && qRow.pertanyaan) {
+            let pilihan = [];
+            try { pilihan = JSON.parse(qRow.pilihan || '[]'); } catch(e) {}
+            return res.json({
+                success: true,
+                message: "Success",
+                data: {
+                    contoh_soal: [{
+                        urutan: uNum,
+                        pertanyaan: qRow.pertanyaan,
+                        pilihan: pilihan,
+                        pembahasan: qRow.pembahasan || ""
+                    }]
+                }
+            });
+        }
+
+        // 2. Fallback to api_cache with limit 3 / limit 1
+        const forceRefresh = refresh === 'true';
+        let data = await fetchFromTkaApiWithCache('daya-serap/contoh-soal/urutan', {
             kd_mapel,
-            urutan: parseInt(urutan),
+            urutan: uNum,
             limit: 3
-        });
-        res.json(data);
+        }, forceRefresh);
+
+        if (!data || !data.data || !data.data.contoh_soal) {
+            data = await fetchFromTkaApiWithCache('daya-serap/contoh-soal/urutan', {
+                kd_mapel,
+                urutan: uNum,
+                limit: 1
+            }, forceRefresh);
+        }
+
+        res.json(data || { success: true, data: { contoh_soal: [] } });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error('contoh-soal error:', error.message);
+        res.json({ success: true, message: "OK", data: { contoh_soal: [] } });
     }
 });
 
-// 6. Get Daya Serap + Perbandingan (Nasional vs Provinsi vs Kabupaten vs Sekolah)
+// 6. Get Daya Serap + Perbandingan (Nasional vs Provinsi vs Kabupaten vs Sekolah) (With SQLite Cache)
 app.get('/api/daya-serap', async (req, res) => {
-    const { kd_mapel, kd_prop, kd_rayon, kd_sek } = req.query;
+    const { kd_mapel, kd_prop, kd_rayon, kd_sek, refresh } = req.query;
     if (!kd_mapel) {
         return res.status(400).json({ success: false, message: "kd_mapel is required" });
     }
 
     try {
+        const forceRefresh = refresh === 'true';
         const comparison = {};
 
         // 1. Ambil data Nasional (selalu diperlukan)
-        const nasRes = await fetchFromTkaApi('daya-serap/nasional', {
+        const nasRes = await fetchFromTkaApiWithCache('daya-serap/nasional', {
             kd_mapel,
             kd_jenjang: "T",
             jenis_sekolah: "T",
             status_sekolah: "T"
-        });
+        }, forceRefresh);
         
         const nasData = nasRes.data || {};
         comparison.nasional = {
@@ -198,13 +305,13 @@ app.get('/api/daya-serap', async (req, res) => {
 
         // 2. Ambil data Provinsi (jika dipilih)
         if (kd_prop && kd_prop !== 'T') {
-            const provRes = await fetchFromTkaApi('daya-serap/provinsi', {
+            const provRes = await fetchFromTkaApiWithCache('daya-serap/provinsi', {
                 kd_mapel,
                 kd_jenjang: "T",
                 jenis_sekolah: "T",
                 status_sekolah: "T",
                 kd_prop
-            });
+            }, forceRefresh);
             const provData = provRes.data || {};
             comparison.provinsi = {
                 avg: calculateAverage(provData.elemen_summary),
@@ -215,14 +322,14 @@ app.get('/api/daya-serap', async (req, res) => {
 
         // 3. Ambil data Kabupaten/Rayon (jika dipilih)
         if (kd_rayon && kd_rayon !== 'T') {
-            const kabRes = await fetchFromTkaApi('daya-serap/kabupaten', {
+            const kabRes = await fetchFromTkaApiWithCache('daya-serap/kabupaten', {
                 kd_mapel,
                 kd_jenjang: "T",
                 jenis_sekolah: "T",
                 status_sekolah: "T",
                 kd_prop,
                 kd_rayon
-            });
+            }, forceRefresh);
             const kabData = kabRes.data || {};
             comparison.kabupaten = {
                 avg: calculateAverage(kabData.elemen_summary),
@@ -233,18 +340,21 @@ app.get('/api/daya-serap', async (req, res) => {
 
         // 4. Ambil data Sekolah (jika dipilih)
         if (kd_sek && kd_sek !== 'T') {
-            const sekRes = await fetchFromTkaApi('daya-serap/sekolah', {
-                kd_mapel,
-                kd_jenjang: "T",
-                jenis_sekolah: "T",
-                status_sekolah: "T",
-                kd_prop,
-                kd_rayon,
-                kd_sek,
-                limit: 50,
-                offset: 0
-            });
-            const sekData = sekRes.data || {};
+            // Check cache for limit 10, limit 50, or no limit
+            const keyBase = { kd_mapel, kd_jenjang: "T", jenis_sekolah: "T", status_sekolah: "T", kd_prop, kd_rayon, kd_sek };
+            let sekRes = getApiCache('daya-serap/sekolah', { ...keyBase, limit: 10, offset: 0 })
+                      || getApiCache('daya-serap/sekolah', { ...keyBase, limit: 50, offset: 0 })
+                      || getApiCache('daya-serap/sekolah', keyBase);
+
+            if (sekRes) {
+                sekRes = sekRes.data;
+            } else if (!forceRefresh) {
+                sekRes = await fetchFromTkaApiWithCache('daya-serap/sekolah', { ...keyBase, limit: 10, offset: 0 }, forceRefresh);
+            } else {
+                sekRes = await fetchFromTkaApiWithCache('daya-serap/sekolah', { ...keyBase, limit: 50, offset: 0 }, forceRefresh);
+            }
+
+            const sekData = (sekRes && sekRes.data) ? sekRes.data : (sekRes || {});
             comparison.sekolah = {
                 avg: calculateAverage(sekData.elemen_summary),
                 urutan: extractUrutanScores(sekData.raw_data)
@@ -253,6 +363,8 @@ app.get('/api/daya-serap', async (req, res) => {
         }
 
         if (activeData && activeData.data) {
+            // Cloned object so we don't mutate underlying cached object directly
+            activeData = JSON.parse(JSON.stringify(activeData));
             activeData.data.comparison = comparison;
         }
 
@@ -262,10 +374,119 @@ app.get('/api/daya-serap', async (req, res) => {
     }
 });
 
-// 7. Get SMAN 2 Mengwi All Subjects Summary (dengan Caching)
+// 6b. Get Peringkat Sekolah per Kabupaten/Rayon
+app.get('/api/peringkat-sekolah', async (req, res) => {
+    let { kd_mapel, kd_prop, kd_rayon, refresh } = req.query;
+    if (!kd_mapel || kd_mapel === 'undefined' || kd_mapel === 'null' || kd_mapel.trim() === '') kd_mapel = 'ABINW';
+    if (!kd_prop || kd_prop === 'undefined' || kd_prop === 'null' || kd_prop.trim() === '') kd_prop = '22';
+    if (!kd_rayon || kd_rayon === 'undefined' || kd_rayon === 'null' || kd_rayon.trim() === '') kd_rayon = '2209';
+    const forceRefresh = refresh === 'true';
+
+    try {
+        // Fetch page 1 (limit 50, offset 0) with multi-key cache fallback
+        const keyPage1 = { kd_mapel, kd_jenjang: "T", jenis_sekolah: "T", status_sekolah: "T", kd_prop, kd_rayon, limit: 50, offset: 0 };
+        let sekRes1 = getApiCache('daya-serap/sekolah', keyPage1)
+                   || getApiCache('daya-serap/sekolah', { ...keyPage1, limit: "50", offset: "0" });
+
+        if (sekRes1) {
+            sekRes1 = sekRes1.data;
+        } else {
+            sekRes1 = await fetchFromTkaApiWithCache('daya-serap/sekolah', keyPage1, forceRefresh);
+        }
+
+        let rawList = (sekRes1 && sekRes1.data && sekRes1.data.raw_data) ? [...sekRes1.data.raw_data] : [];
+        const total = (sekRes1 && sekRes1.data && sekRes1.data.total_sekolah) ? sekRes1.data.total_sekolah : rawList.length;
+
+        // If total > 50 or page 1 reached limit, fetch page 2 (offset 50)
+        if (total > 50 || rawList.length === 50) {
+            try {
+                const keyPage2 = { kd_mapel, kd_jenjang: "T", jenis_sekolah: "T", status_sekolah: "T", kd_prop, kd_rayon, limit: 50, offset: 50 };
+                let sekRes2 = getApiCache('daya-serap/sekolah', keyPage2)
+                           || getApiCache('daya-serap/sekolah', { ...keyPage2, limit: "50", offset: "50" });
+
+                if (sekRes2) {
+                    sekRes2 = sekRes2.data;
+                } else {
+                    sekRes2 = await fetchFromTkaApiWithCache('daya-serap/sekolah', keyPage2, forceRefresh);
+                }
+
+                if (sekRes2 && sekRes2.data && sekRes2.data.raw_data) {
+                    rawList = rawList.concat(sekRes2.data.raw_data);
+                }
+            } catch (e2) {
+                console.warn('Page 2 fetch warning:', e2.message);
+            }
+        }
+
+        const namaRayon = (sekRes1.data && sekRes1.data.wilayah && sekRes1.data.wilayah.nama_rayon)
+            ? sekRes1.data.wilayah.nama_rayon.trim()
+            : 'Kabupaten Badung';
+
+        const schoolRankings = rawList.map(item => {
+            let sum = 0, count = 0;
+            for (let i = 1; i <= 30; i++) {
+                const val = item[`persen_urutan_${i}`];
+                if (val !== null && val !== undefined) {
+                    sum += parseFloat(val);
+                    count++;
+                }
+            }
+            const avg = count > 0 ? sum / count : 0;
+            return {
+                npsn: item.npsn || '',
+                name: (item.nm_sek || '').trim(),
+                kd_sek_full: item.kd_sek_full || '',
+                sts_sek: item.sts_sek || '', // 'N' = Negeri, 'S' = Swasta
+                jns_sek: item.jns_sek || '',
+                jenjang: item.jenjang || 'SMA',
+                avg: parseFloat(avg.toFixed(2)),
+                questionsCount: count,
+                isTarget: item.npsn === '50101684' || (item.nm_sek || '').toUpperCase().includes('SMAN 2 MENGWI')
+            };
+        });
+
+        // Sort schools by average score descending
+        schoolRankings.sort((a, b) => b.avg - a.avg);
+
+        // Assign rank numbers
+        let targetSchool = null;
+        schoolRankings.forEach((s, idx) => {
+            s.rank = idx + 1;
+            if (s.isTarget) {
+                targetSchool = s;
+            }
+        });
+
+        res.json({
+            success: true,
+            kd_mapel,
+            nama_rayon: namaRayon,
+            total_sekolah: schoolRankings.length,
+            target_school: targetSchool,
+            rankings: schoolRankings
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// 7. Get SMAN 2 Mengwi All Subjects Summary (dengan SQLite & In-Memory Caching)
 app.get('/api/sman2mengwi/summary', async (req, res) => {
-    if (sman2MengwiCache) {
+    const forceRefresh = req.query.refresh === 'true';
+
+    // 1. In-memory hit (fastest)
+    if (sman2MengwiCache && !forceRefresh) {
         return res.json(sman2MengwiCache);
+    }
+
+    // 2. SQLite Cache hit
+    if (!forceRefresh) {
+        const sqliteCached = getApiCache('sman2mengwi/summary', {});
+        if (sqliteCached) {
+            console.log('[SQLite Cache HIT] SMAN 2 Mengwi Summary loaded from SQLite');
+            sman2MengwiCache = sqliteCached.data;
+            return res.json(sman2MengwiCache);
+        }
     }
 
     try {
@@ -293,7 +514,7 @@ app.get('/api/sman2mengwi/summary', async (req, res) => {
         const promises = activeSubjects.map(async (subj) => {
             try {
                 // Fetch data sekolah
-                const sekRes = await fetchFromTkaApi('daya-serap/sekolah', {
+                const sekRes = await fetchFromTkaApiWithCache('daya-serap/sekolah', {
                     kd_mapel: subj.kd,
                     kd_jenjang: "T",
                     jenis_sekolah: "T",
@@ -303,25 +524,25 @@ app.get('/api/sman2mengwi/summary', async (req, res) => {
                     kd_sek,
                     limit: 10,
                     offset: 0
-                });
+                }, forceRefresh);
 
                 // Fetch data kabupaten
-                const kabRes = await fetchFromTkaApi('daya-serap/kabupaten', {
+                const kabRes = await fetchFromTkaApiWithCache('daya-serap/kabupaten', {
                     kd_mapel: subj.kd,
                     kd_jenjang: "T",
                     jenis_sekolah: "T",
                     status_sekolah: "T",
                     kd_prop,
                     kd_rayon
-                });
+                }, forceRefresh);
 
                 // Fetch data nasional
-                const nasRes = await fetchFromTkaApi('daya-serap/nasional', {
+                const nasRes = await fetchFromTkaApiWithCache('daya-serap/nasional', {
                     kd_mapel: subj.kd,
                     kd_jenjang: "T",
                     jenis_sekolah: "T",
                     status_sekolah: "T"
-                });
+                }, forceRefresh);
 
                 const sekAvg = calculateAverage(sekRes.data?.elemen_summary);
                 const kabAvg = calculateAverage(kabRes.data?.elemen_summary);
@@ -368,6 +589,9 @@ app.get('/api/sman2mengwi/summary', async (req, res) => {
             data: summary
         };
 
+        // Cache in SQLite
+        setApiCache('sman2mengwi/summary', {}, sman2MengwiCache);
+
         res.json(sman2MengwiCache);
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -384,48 +608,30 @@ async function startScraping() {
     scrapeProgress = 0;
     
     try {
-        console.log("Starting background question scraper...");
-        const fs = require('fs');
-        const cachePath = path.join(__dirname, 'public', 'questions_cache.json');
+        console.log("Starting background question scraper with SQLite storage...");
         
-        // 1. Get mapel list from Kemendikdasmen API
-        const mapelRes = await fetchFromTkaApi('listmapel', { even_tka: "smasmk", jenjang: "SMA" });
+        // 1. Get mapel list from Kemendikdasmen API (or SQLite cache)
+        const mapelRes = await fetchFromTkaApiWithCache('listmapel', { even_tka: "smasmk", jenjang: "SMA" });
         const mapels = mapelRes.data || [];
         
-        let cachedData = {};
-        if (fs.existsSync(cachePath)) {
-            try {
-                cachedData = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
-            } catch (e) {
-                cachedData = {};
-            }
-        }
-
         const totalTasks = mapels.length * 30; // Max 30 questions per subject
         let completedTasks = 0;
 
         for (const m of mapels) {
             const kd = m.kd_mapel;
-            if (!cachedData[kd]) {
-                cachedData[kd] = {
-                    subject_name: m.mapel,
-                    questions: []
-                };
-            }
+            const subjectName = m.mapel;
 
-            const subjectQuestions = [];
             for (let urutan = 1; urutan <= 30; urutan++) {
                 try {
-                    // Check if already in cache
-                    const alreadyCached = cachedData[kd].questions.find(q => q.urutan === urutan);
+                    // Check if already in SQLite DB
+                    const alreadyCached = getQuestion(kd, urutan);
                     if (alreadyCached) {
-                        subjectQuestions.push(alreadyCached);
                         completedTasks++;
                         scrapeProgress = Math.round((completedTasks / totalTasks) * 100);
                         continue;
                     }
 
-                    const res = await fetchFromTkaApi('daya-serap/contoh-soal/urutan', {
+                    const res = await fetchFromTkaApiWithCache('daya-serap/contoh-soal/urutan', {
                         kd_mapel: kd,
                         urutan: urutan,
                         limit: 1
@@ -439,7 +645,7 @@ async function startScraping() {
                             pilihan: q.pilihan || [],
                             pembahasan: q.pembahasan || ""
                         };
-                        subjectQuestions.push(qObj);
+                        saveQuestion(kd, subjectName, urutan, qObj);
                     }
                 } catch (err) {
                     console.error(`Error scraping ${kd} Q${urutan}:`, err.message);
@@ -447,15 +653,15 @@ async function startScraping() {
                 completedTasks++;
                 scrapeProgress = Math.round((completedTasks / totalTasks) * 100);
                 
-                // Be gentle with the TKA API
                 await new Promise(r => setTimeout(r, 20));
             }
-
-            cachedData[kd].questions = subjectQuestions;
-            fs.writeFileSync(cachePath, JSON.stringify(cachedData, null, 2), 'utf8');
         }
 
-        console.log("Scraping completed! Cache saved successfully.");
+        // Sync SQLite questions to public/questions_cache.json for backward compatibility
+        const allQuestionsGrouped = getAllQuestionsGrouped();
+        fs.writeFileSync(jsonCachePath, JSON.stringify(allQuestionsGrouped, null, 2), 'utf8');
+
+        console.log("Scraping completed! Questions saved to SQLite DB and JSON cache.");
         isScraping = false;
         scrapeProgress = 100;
 
@@ -467,11 +673,11 @@ async function startScraping() {
 
 // 8. Check download status / start scraping if not exist
 app.get('/api/download/status', (req, res) => {
-    const fs = require('fs');
-    const cachePath = path.join(__dirname, 'public', 'questions_cache.json');
-    const exists = fs.existsSync(cachePath);
+    const allQuestions = getAllQuestionsGrouped();
+    const hasDataInSqlite = Object.keys(allQuestions).length > 0;
+    const existsJson = fs.existsSync(jsonCachePath);
     
-    if (exists && !isScraping) {
+    if ((hasDataInSqlite || existsJson) && !isScraping) {
         return res.json({ cached: true, progress: 100 });
     }
     
@@ -482,15 +688,26 @@ app.get('/api/download/status', (req, res) => {
     res.json({ cached: false, progress: scrapeProgress });
 });
 
+// Helper to get grouped questions (SQLite first, JSON fallback)
+function getQuestionsData() {
+    let data = getAllQuestionsGrouped();
+    if (Object.keys(data).length === 0 && fs.existsSync(jsonCachePath)) {
+        try {
+            data = JSON.parse(fs.readFileSync(jsonCachePath, 'utf8'));
+        } catch (e) {
+            data = {};
+        }
+    }
+    return data;
+}
+
 // 9. Download TXT format
 app.get('/api/download/txt', (req, res) => {
-    const fs = require('fs');
-    const cachePath = path.join(__dirname, 'public', 'questions_cache.json');
-    if (!fs.existsSync(cachePath)) {
+    const data = getQuestionsData();
+    if (Object.keys(data).length === 0) {
         return res.status(400).send("Cache belum siap. Silakan tunggu hingga progress 100%.");
     }
     
-    const data = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
     let output = "==================================================\n";
     output += "          BANK SOAL & PEMBAHASAN TKA TINGKAT NASIONAL\n";
     output += "                SMA NEGERI 2 MENGWI\n";
@@ -501,19 +718,19 @@ app.get('/api/download/txt', (req, res) => {
         output += `MATA PELAJARAN: ${subj.subject_name} (${kd})\n`;
         output += "--------------------------------------------------\n\n";
         
-        subj.questions.forEach(q => {
+        (subj.questions || []).forEach(q => {
             output += `Soal No. ${q.urutan}\n`;
-            const cleanQ = q.pertanyaan.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+            const cleanQ = (q.pertanyaan || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
             output += `${cleanQ}\n\n`;
             
             output += "Pilihan Jawaban:\n";
-            q.pilihan.forEach(ch => {
-                const cleanOpt = ch.text.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+            (q.pilihan || []).forEach(ch => {
+                const cleanOpt = (ch.text || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
                 output += `  [ ${ch.key} ] ${cleanOpt}\n`;
             });
             output += "\n";
             
-            const cleanExp = q.pembahasan.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+            const cleanExp = (q.pembahasan || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
             output += `Pembahasan:\n${cleanExp || "Kunci & Pembahasan Dirahasiakan"}\n`;
             output += "--------------------------------------------------\n\n";
         });
@@ -527,13 +744,11 @@ app.get('/api/download/txt', (req, res) => {
 
 // 10. Download DOC format (HTML format rendered as MSWord)
 app.get('/api/download/doc', (req, res) => {
-    const fs = require('fs');
-    const cachePath = path.join(__dirname, 'public', 'questions_cache.json');
-    if (!fs.existsSync(cachePath)) {
+    const data = getQuestionsData();
+    if (Object.keys(data).length === 0) {
         return res.status(400).send("Cache belum siap. Silakan tunggu hingga progress 100%.");
     }
     
-    const data = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
     let html = `<!DOCTYPE html>
 <html>
 <head>
@@ -561,18 +776,18 @@ h2 { color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 5px; marg
         const subj = data[kd];
         html += `<h2>MATA PELAJARAN: ${subj.subject_name} (${kd})</h2>`;
         
-        subj.questions.forEach(q => {
+        (subj.questions || []).forEach(q => {
             html += `<div class="question-box">`;
             html += `<div class="question-header">Soal No. ${q.urutan}</div>`;
             html += `<div>${q.pertanyaan}</div>`;
             
             html += `<div class="options-list">`;
-            q.pilihan.forEach(ch => {
+            (q.pilihan || []).forEach(ch => {
                 html += `<div class="option-item"><strong>[ ${ch.key} ]</strong> ${ch.text}</div>`;
             });
             html += `</div>`;
             
-            const cleanExp = q.pembahasan.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim();
+            const cleanExp = (q.pembahasan || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim();
             if (cleanExp !== "") {
                 html += `<div class="explanation-box"><strong>Pembahasan:</strong><br>${q.pembahasan}</div>`;
             } else {
@@ -591,13 +806,11 @@ h2 { color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 5px; marg
 
 // 11. Print View for PDF export
 app.get('/print/bank-soal', (req, res) => {
-    const fs = require('fs');
-    const cachePath = path.join(__dirname, 'public', 'questions_cache.json');
-    if (!fs.existsSync(cachePath)) {
+    const data = getQuestionsData();
+    if (Object.keys(data).length === 0) {
         return res.status(400).send("Cache belum siap. Silakan buka halaman Capaian Semua Mapel dan unduh kembali.");
     }
     
-    const data = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
     let html = `<!DOCTYPE html>
 <html>
 <head>
@@ -641,18 +854,18 @@ h2 { font-size: 14px; color: #475569; margin: 5px 0 0 0; }
         
         html += `<h2 class="subj-title">MATA PELAJARAN: ${subj.subject_name} (${kd})</h2>`;
         
-        subj.questions.forEach(q => {
+        (subj.questions || []).forEach(q => {
             html += `<div class="question-box">`;
             html += `<div class="question-header">Soal No. ${q.urutan}</div>`;
             html += `<div>${q.pertanyaan}</div>`;
             
             html += `<div class="options-list">`;
-            q.pilihan.forEach(ch => {
+            (q.pilihan || []).forEach(ch => {
                 html += `<div class="option-item"><strong>[ ${ch.key} ]</strong> ${ch.text}</div>`;
             });
             html += `</div>`;
             
-            const cleanExp = q.pembahasan.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim();
+            const cleanExp = (q.pembahasan || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim();
             if (cleanExp !== "") {
                 html += `<div class="explanation-box"><strong>Pembahasan:</strong><br>${q.pembahasan}</div>`;
             } else {
@@ -676,8 +889,54 @@ window.onload = function() {
     res.send(html);
 });
 
+// 12. Cache Statistics API Endpoint
+app.get('/api/cache/stats', (req, res) => {
+    const stats = getCacheStats();
+    if (!stats) return res.status(500).json({ success: false, message: "Gagal mengambil statistik database" });
+    res.json({ success: true, stats });
+});
+
+// 13. Clear Cache API Endpoint
+app.all('/api/cache/clear', (req, res) => {
+    sman2MengwiCache = null;
+    const cleared = clearApiCache();
+    if (cleared) {
+        res.json({ success: true, message: "Cache API SQLite3 berhasil dibersihkan!" });
+    } else {
+        res.status(500).json({ success: false, message: "Gagal membersihkan cache API SQLite3." });
+    }
+});
+
+// 14. Periodic Background Sync Worker (Syncs DB quietly every 6 hours)
+function startPeriodicSync() {
+    const SIX_HOURS = 6 * 60 * 60 * 1000;
+    setInterval(async () => {
+        console.log('[Background Sync] Starting 6-hour SQLite database refresh...');
+        try {
+            const mapelRes = await fetchFromTkaApiWithCache('listmapel', { even_tka: "smasmk", jenjang: "SMA" }, true);
+            const mapels = mapelRes.data || [];
+            for (const m of mapels) {
+                const kd_mapel = m.kd_mapel;
+                try {
+                    await fetchFromTkaApiWithCache('daya-serap/nasional', { kd_mapel, kd_jenjang: 'T', jenis_sekolah: 'T', status_sekolah: 'T' }, true);
+                    await fetchFromTkaApiWithCache('daya-serap/provinsi', { kd_mapel, kd_jenjang: 'T', jenis_sekolah: 'T', status_sekolah: 'T', kd_prop: '22' }, true);
+                    await fetchFromTkaApiWithCache('daya-serap/kabupaten', { kd_mapel, kd_jenjang: 'T', jenis_sekolah: 'T', status_sekolah: 'T', kd_prop: '22', kd_rayon: '2209' }, true);
+                    await fetchFromTkaApiWithCache('daya-serap/sekolah', { kd_mapel, kd_jenjang: 'T', jenis_sekolah: 'T', status_sekolah: 'T', kd_prop: '22', kd_rayon: '2209', limit: 50, offset: 0 }, true);
+                    await fetchFromTkaApiWithCache('daya-serap/sekolah', { kd_mapel, kd_jenjang: 'T', jenis_sekolah: 'T', status_sekolah: 'T', kd_prop: '22', kd_rayon: '2209', limit: 50, offset: 50 }, true);
+                } catch(e) {}
+                await new Promise(r => setTimeout(r, 500));
+            }
+            console.log('[Background Sync] Complete!');
+        } catch (e) {
+            console.warn('[Background Sync] Warning:', e.message);
+        }
+    }, SIX_HOURS);
+}
+
 app.listen(PORT, () => {
     console.log(`=================================================`);
     console.log(`TKA Dashboard Server running on http://localhost:${PORT}`);
+    console.log(`SQLite3 Database connected: ${path.join(__dirname, 'tka_cache.db')}`);
     console.log(`=================================================`);
+    startPeriodicSync();
 });

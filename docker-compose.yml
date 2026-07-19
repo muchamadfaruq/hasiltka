@@ -6,6 +6,8 @@ services:
     restart: unless-stopped
     ports:
       - "5013:3000"
+    volumes:
+      - ./tka_cache.db:/usr/src/app/tka_cache.db
     networks:
       - nginx-proxy-manager_default
 
