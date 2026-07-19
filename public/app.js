@@ -34,9 +34,18 @@ const mainDataLayout = document.getElementById('main-data-layout');
 const navDashboard = document.getElementById('nav-dashboard');
 const navSman2mengwi = document.getElementById('nav-sman2mengwi');
 const navPeringkat = document.getElementById('nav-peringkat');
+const navAnalisisSoal = document.getElementById('nav-analisis-soal');
 const dashboardView = document.getElementById('dashboard-view');
 const sman2mengwiView = document.getElementById('sman2mengwi-view');
 const peringkatView = document.getElementById('peringkat-view');
+const analisisSoalView = document.getElementById('analisis-soal-view');
+
+// Analisis Soal View Elements
+const analisisSoalSelectMapel = document.getElementById('analisis-soal-select-mapel');
+const analisisSoalSearch = document.getElementById('analisis-soal-search');
+const analisisSoalFilter = document.getElementById('analisis-soal-filter');
+const analisisSoalSort = document.getElementById('analisis-soal-sort');
+const analisisSoalCardsContainer = document.getElementById('analisis-soal-cards-container');
 
 // Peringkat View Elements
 const peringkatSelectMapel = document.getElementById('peringkat-select-mapel');
@@ -198,14 +207,15 @@ async function initializeApp() {
         const resMapel = await fetch('/api/mapel');
         const mapelJson = await resMapel.json();
         
-        if (mapelJson.status_code !== 200 || !mapelJson.data) {
+        if ((mapelJson.status_code && mapelJson.status_code !== 200) || (!mapelJson.data && !mapelJson.success)) {
             throw new Error(mapelJson.message || "Gagal memuat mata pelajaran");
         }
         mapelList = mapelJson.data;
 
-        // Populate Mapel Selector & Peringkat Mapel Selector
+        // Populate Mapel Selector, Peringkat Mapel Selector & Analisis Soal Mapel Selector
         selectMapel.innerHTML = '';
         if (peringkatSelectMapel) peringkatSelectMapel.innerHTML = '';
+        if (analisisSoalSelectMapel) analisisSoalSelectMapel.innerHTML = '';
 
         const savedKdMapel = localStorage.getItem('selected_kd_mapel');
 
@@ -226,6 +236,16 @@ async function initializeApp() {
                     opt2.selected = true;
                 }
                 peringkatSelectMapel.appendChild(opt2);
+            }
+
+            if (analisisSoalSelectMapel) {
+                const opt3 = document.createElement('option');
+                opt3.value = m.kd_mapel;
+                opt3.textContent = m.mapel;
+                if (savedKdMapel && m.kd_mapel === savedKdMapel) {
+                    opt3.selected = true;
+                }
+                analisisSoalSelectMapel.appendChild(opt3);
             }
         });
 
@@ -252,6 +272,29 @@ async function initializeApp() {
             }
         });
 
+        // Hamburger Menu Logic for Mobile Screens
+        const btnHamburger = document.getElementById('btn-hamburger');
+        const mobileMenuWrapper = document.getElementById('mobile-menu-wrapper');
+        const iconOpen = document.getElementById('hamburger-icon-open');
+        const iconClose = document.getElementById('hamburger-icon-close');
+
+        if (btnHamburger) {
+            btnHamburger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!mobileMenuWrapper) return;
+                const isHidden = mobileMenuWrapper.classList.contains('hidden');
+                if (isHidden) {
+                    mobileMenuWrapper.classList.remove('hidden');
+                    if (iconOpen) iconOpen.classList.add('hidden');
+                    if (iconClose) iconClose.classList.remove('hidden');
+                } else {
+                    mobileMenuWrapper.classList.add('hidden');
+                    if (iconOpen) iconOpen.classList.remove('hidden');
+                    if (iconClose) iconClose.classList.add('hidden');
+                }
+            });
+        }
+
         navDashboard.addEventListener('click', (e) => {
             e.preventDefault();
             switchTab('dashboard');
@@ -266,6 +309,43 @@ async function initializeApp() {
             navPeringkat.addEventListener('click', (e) => {
                 e.preventDefault();
                 switchTab('peringkat');
+            });
+        }
+
+        if (navAnalisisSoal) {
+            navAnalisisSoal.addEventListener('click', (e) => {
+                e.preventDefault();
+                switchTab('analisis-soal');
+            });
+        }
+
+        if (analisisSoalSelectMapel) {
+            analisisSoalSelectMapel.addEventListener('change', () => {
+                const val = analisisSoalSelectMapel.value;
+                if (val) {
+                    localStorage.setItem('selected_kd_mapel', val);
+                    if (selectMapel) selectMapel.value = val;
+                    if (peringkatSelectMapel) peringkatSelectMapel.value = val;
+                }
+                loadAnalisisSoalData(val);
+            });
+        }
+
+        if (analisisSoalSearch) {
+            analisisSoalSearch.addEventListener('input', () => {
+                renderAnalisisSoalView();
+            });
+        }
+
+        if (analisisSoalFilter) {
+            analisisSoalFilter.addEventListener('change', () => {
+                renderAnalisisSoalView();
+            });
+        }
+
+        if (analisisSoalSort) {
+            analisisSoalSort.addEventListener('change', () => {
+                renderAnalisisSoalView();
             });
         }
 
@@ -315,9 +395,9 @@ async function initializeApp() {
         if (btnDownloadDoc) btnDownloadDoc.addEventListener('click', () => triggerExport('doc'));
         if (btnDownloadPdf) btnDownloadPdf.addEventListener('click', () => triggerExport('pdf'));
 
-        // Determine active tab from URL hash or fallback to dashboard (Analisis Pelajaran) as default home view
+        // Determine active tab from URL hash or fallback to dashboard
         const hashTab = location.hash.replace('#', '');
-        const initialTab = (hashTab === 'sman2mengwi' || hashTab === 'peringkat' || hashTab === 'dashboard')
+        const initialTab = (hashTab === 'sman2mengwi' || hashTab === 'peringkat' || hashTab === 'analisis-soal' || hashTab === 'dashboard')
             ? hashTab
             : (localStorage.getItem('active_tab') || 'dashboard');
 
@@ -326,7 +406,7 @@ async function initializeApp() {
 
         window.addEventListener('hashchange', () => {
             const hashTab = location.hash.replace('#', '');
-            if (hashTab === 'sman2mengwi' || hashTab === 'peringkat' || hashTab === 'dashboard') {
+            if (hashTab === 'sman2mengwi' || hashTab === 'peringkat' || hashTab === 'analisis-soal' || hashTab === 'dashboard') {
                 switchTab(hashTab);
             }
         });
@@ -340,26 +420,40 @@ async function initializeApp() {
 
 // Switch between Sidebar tabs with explicit DOM display control
 function switchTab(tabName) {
+    // Auto-close mobile hamburger menu on tab switch
+    const mobileMenuWrapper = document.getElementById('mobile-menu-wrapper');
+    const iconOpen = document.getElementById('hamburger-icon-open');
+    const iconClose = document.getElementById('hamburger-icon-close');
+    if (window.innerWidth < 768 && mobileMenuWrapper && !mobileMenuWrapper.classList.contains('hidden')) {
+        mobileMenuWrapper.classList.add('hidden');
+        if (iconOpen) iconOpen.classList.remove('hidden');
+        if (iconClose) iconClose.classList.add('hidden');
+    }
+
     const dView = document.getElementById('dashboard-view');
     const sView = document.getElementById('sman2mengwi-view');
     const pView = document.getElementById('peringkat-view');
+    const aView = document.getElementById('analisis-soal-view');
 
     const nDash = document.getElementById('nav-dashboard');
     const nSman = document.getElementById('nav-sman2mengwi');
     const nRank = document.getElementById('nav-peringkat');
+    const nAnalisis = document.getElementById('nav-analisis-soal');
 
     const baseStyle = "flex items-center gap-3 px-4 py-2.5 text-slate-500 no-underline rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap sidebar-link";
 
     if (nDash) nDash.className = baseStyle;
     if (nSman) nSman.className = baseStyle;
     if (nRank) nRank.className = baseStyle;
+    if (nAnalisis) nAnalisis.className = baseStyle;
 
-    // Hide all 3 view containers cleanly
+    // Hide all view containers cleanly
     if (dView) { dView.classList.add('hidden'); dView.style.display = 'none'; }
     if (sView) { sView.classList.add('hidden'); sView.style.display = 'none'; }
     if (pView) { pView.classList.add('hidden'); pView.style.display = 'none'; }
+    if (aView) { aView.classList.add('hidden'); aView.style.display = 'none'; }
 
-    const validTab = (tabName === 'sman2mengwi' || tabName === 'peringkat') ? tabName : 'dashboard';
+    const validTab = (tabName === 'sman2mengwi' || tabName === 'peringkat' || tabName === 'analisis-soal') ? tabName : 'dashboard';
     localStorage.setItem('active_tab', validTab);
     
     if (history.replaceState) {
@@ -375,6 +469,10 @@ function switchTab(tabName) {
         if (nRank) { nRank.classList.add('active'); nRank.className += " active sidebar-link active"; }
         if (pView) { pView.classList.remove('hidden'); pView.style.display = 'block'; }
         loadPeringkatData();
+    } else if (validTab === 'analisis-soal') {
+        if (nAnalisis) { nAnalisis.classList.add('active'); nAnalisis.className += " active sidebar-link active"; }
+        if (aView) { aView.classList.remove('hidden'); aView.style.display = 'block'; }
+        loadAnalisisSoalData();
     } else {
         if (nDash) { nDash.classList.add('active'); nDash.className += " active sidebar-link active"; }
         if (dView) { dView.classList.remove('hidden'); dView.style.display = 'block'; }
@@ -1368,7 +1466,7 @@ async function openQuestionModal(kdMapel, urutan) {
         const response = await fetch(`/api/contoh-soal?kd_mapel=${kdMapel}&urutan=${urutan}`);
         const result = await response.json();
 
-        if (result.status_code !== 200 || !result.data || !result.data.contoh_soal || result.data.contoh_soal.length === 0) {
+        if ((result.status_code && result.status_code !== 200) || (!result.data && !result.success) || !result.data || !result.data.contoh_soal || result.data.contoh_soal.length === 0) {
             throw new Error("Gagal mengambil data contoh soal dari API");
         }
 
@@ -1924,6 +2022,445 @@ function renderPeringkatTable() {
         `;
 
         tbody.appendChild(tr);
+    });
+}
+
+// ==========================================
+// ANALISIS BUTIR SOAL LOGIC & RENDERING
+// ==========================================
+
+let questionsCacheData = null;
+
+async function getOrFetchQuestionsCache() {
+    if (questionsCacheData && Object.keys(questionsCacheData).length > 0) return questionsCacheData;
+    // 1. Try fetching directly from SQLite database API endpoint
+    try {
+        const res = await fetch('/api/questions-all');
+        if (res.ok) {
+            const data = await res.json();
+            if (data && Object.keys(data).length > 0) {
+                questionsCacheData = data;
+                return questionsCacheData;
+            }
+        }
+    } catch (err) {
+        console.warn('[Analisis Soal] Cannot fetch from /api/questions-all:', err.message);
+    }
+    // 2. Fallback to static questions_cache.json
+    try {
+        const res = await fetch('/questions_cache.json');
+        if (res.ok) {
+            questionsCacheData = await res.json();
+            return questionsCacheData;
+        }
+    } catch (err) {
+        console.warn('[Analisis Soal] Cannot fetch questions_cache.json:', err.message);
+    }
+    return {};
+}
+
+let rawAnalisisSoalData = null;
+let activeAnalisisSoalKdMapel = '';
+
+async function loadAnalisisSoalData(targetKdMapel = null) {
+    const elSelect = document.getElementById('analisis-soal-select-mapel');
+    const globalSelect = document.getElementById('select-mapel');
+    const kdMapel = targetKdMapel || (elSelect ? elSelect.value : null) || (globalSelect ? globalSelect.value : null) || 'ABINW';
+    
+    activeAnalisisSoalKdMapel = kdMapel;
+    if (elSelect && elSelect.value !== kdMapel) {
+        elSelect.value = kdMapel;
+    }
+
+    const container = document.getElementById('analisis-soal-cards-container');
+    if (container) {
+        container.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-16 bg-white border border-slate-200 rounded-2xl shadow-sm">
+                <div class="spinner border-2 w-8 h-8 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+                <p class="text-slate-500 font-semibold text-sm">Memuat data analisis butir soal...</p>
+            </div>
+        `;
+    }
+
+    try {
+        const [dsRes, qCache] = await Promise.all([
+            fetch(`/api/daya-serap?kd_mapel=${kdMapel}&kd_prop=${SMAN_PROP}&kd_rayon=${SMAN_RAYON}&kd_sek=${SMAN_SEK}`),
+            getOrFetchQuestionsCache()
+        ]);
+
+        const dsJson = await dsRes.json();
+        if ((dsJson.status_code && dsJson.status_code !== 200) || (!dsJson.data && !dsJson.success)) {
+            throw new Error(dsJson.message || "Gagal mengambil data daya serap dari server");
+        }
+
+        const data = dsJson.data;
+        const comparison = data.comparison || {};
+        const hierarchy = data.detail_hierarchy || data.hierarchy || [];
+        const elemenSummary = data.elemen_summary || [];
+
+        // Build question lookup map from questionsCache
+        const subjObj = qCache[kdMapel] || {};
+        const questionsList = subjObj.questions || [];
+        const questionsMap = {};
+        questionsList.forEach(q => {
+            if (q && q.urutan) questionsMap[q.urutan] = q;
+        });
+
+        // Flatten indicators from hierarchy to map urutan -> competency meta
+        const indicatorMetaMap = {};
+        hierarchy.forEach(el => {
+            (el.subelemen_list || []).forEach(sub => {
+                const indList = extractIndicators(sub);
+                indList.forEach(ind => {
+                    if (ind && ind.urutan) {
+                        indicatorMetaMap[ind.urutan] = {
+                            elemen: el.elemen || '',
+                            subelemen: sub.subelemen || '',
+                            indikator: ind.indikator ? ind.indikator.replace(/\s*\(\d+\)\s*$/, '') : '',
+                            nilai: ind.nilai || 0
+                        };
+                    }
+                });
+            });
+        });
+
+        rawAnalisisSoalData = {
+            kdMapel,
+            comparison,
+            hierarchy,
+            elemenSummary,
+            questionsMap,
+            indicatorMetaMap
+        };
+
+        renderAnalisisSoalView();
+
+    } catch (err) {
+        console.error("Error loading analisis soal:", err);
+        if (container) {
+            container.innerHTML = `
+                <div class="bg-rose-50 border border-rose-200 text-rose-800 p-6 rounded-2xl text-center shadow-sm">
+                    <p class="font-bold text-sm mb-1">⚠️ Gagal Memuat Analisis Soal</p>
+                    <p class="text-xs text-rose-600 mb-4">${err.message || "Terjadi kesalahan saat menghubungi server."}</p>
+                    <button class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all" onclick="loadAnalisisSoalData('${kdMapel}')">Coba Lagi</button>
+                </div>
+            `;
+        }
+    }
+}
+
+function renderAnalisisSoalView() {
+    if (!rawAnalisisSoalData) return;
+
+    const { kdMapel, comparison, questionsMap, indicatorMetaMap } = rawAnalisisSoalData;
+    const container = document.getElementById('analisis-soal-cards-container');
+    if (!container) return;
+
+    const sekUrutan = comparison.sekolah?.urutan || {};
+    const nasUrutan = comparison.nasional?.urutan || {};
+    const kabUrutan = comparison.kabupaten?.urutan || {};
+    const provUrutan = comparison.provinsi?.urutan || {};
+
+    // Collect list of all questions (urutan 1..30)
+    const allItems = [];
+    for (let u = 1; u <= 30; u++) {
+        const sekScore = sekUrutan[u] !== undefined ? sekUrutan[u] : 0;
+        const nasScore = nasUrutan[u] !== undefined ? nasUrutan[u] : 0;
+        const kabScore = kabUrutan[u] !== undefined ? kabUrutan[u] : 0;
+        const provScore = provUrutan[u] !== undefined ? provUrutan[u] : 0;
+        const gapNas = sekScore - nasScore;
+        const qData = questionsMap[u] || null;
+        const meta = indicatorMetaMap[u] || {};
+
+        let category = 'medium';
+        if (sekScore < 40) category = 'difficult';
+        else if (sekScore >= 70) category = 'easy';
+
+        const isSecretKey = !qData || !qData.pembahasan || qData.pembahasan.trim() === '' || qData.pembahasan === '<p>&nbsp;</p>';
+
+        allItems.push({
+            urutan: u,
+            sekScore,
+            nasScore,
+            kabScore,
+            provScore,
+            gapNas,
+            category,
+            isSecretKey,
+            qData,
+            meta
+        });
+    }
+
+    // 1. Calculate Summary Stats
+    const totalCount = allItems.length;
+    const hardCount = allItems.filter(i => i.category === 'difficult').length;
+    const midCount = allItems.filter(i => i.category === 'medium').length;
+    const easyCount = allItems.filter(i => i.category === 'easy').length;
+
+    const avgSek = comparison.sekolah?.avg || (allItems.reduce((a, b) => a + b.sekScore, 0) / (totalCount || 1));
+    const avgNas = comparison.nasional?.avg || (allItems.reduce((a, b) => a + b.nasScore, 0) / (totalCount || 1));
+    const avgNasGap = avgSek - avgNas;
+
+    // Update KPI UI
+    const elAvg = document.getElementById('as-stat-avg');
+    const elNasGap = document.getElementById('as-stat-nas-gap');
+    const elTotal = document.getElementById('as-stat-total-soal');
+    const elHardCount = document.getElementById('as-stat-hard-count');
+    const elMidCount = document.getElementById('as-stat-mid-count');
+    const elEasyCount = document.getElementById('as-stat-easy-count');
+
+    if (elAvg) elAvg.textContent = `${avgSek.toFixed(2)}%`;
+    if (elNasGap) {
+        const sign = avgNasGap >= 0 ? '+' : '';
+        elNasGap.textContent = `${sign}${avgNasGap.toFixed(2)}% vs Nas`;
+        elNasGap.className = `text-xs font-bold ${avgNasGap >= 0 ? 'text-emerald-600' : 'text-rose-600'}`;
+    }
+    if (elTotal) elTotal.textContent = `${totalCount} Butir Soal`;
+    if (elHardCount) elHardCount.textContent = `${hardCount} Soal`;
+    if (elMidCount) elMidCount.textContent = `${midCount} Soal`;
+    if (elEasyCount) elEasyCount.textContent = `${easyCount} Soal`;
+
+    // 2. Weak Points Alert Banner
+    const weakBanner = document.getElementById('as-weak-banner');
+    const weakChips = document.getElementById('as-weak-chips');
+    const weakText = document.getElementById('as-weak-summary-text');
+
+    const lowestItems = [...allItems].sort((a, b) => a.sekScore - b.sekScore).slice(0, 3);
+    if (lowestItems.length > 0 && lowestItems[0].sekScore < 50) {
+        if (weakBanner) weakBanner.classList.remove('hidden');
+        if (weakChips) {
+            weakChips.innerHTML = '';
+            lowestItems.forEach(item => {
+                const chip = document.createElement('button');
+                chip.className = "bg-rose-100 hover:bg-rose-200 text-rose-900 border border-rose-300 text-xs font-bold px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer";
+                chip.innerHTML = `<span>Soal #${item.urutan}</span> <span class="bg-rose-600 text-white text-[10px] px-1.5 py-0.5 rounded-md">${item.sekScore.toFixed(1)}%</span>`;
+                chip.onclick = () => openQuestionModal(kdMapel, item.urutan);
+                weakChips.appendChild(chip);
+            });
+        }
+        if (weakText) {
+            weakText.textContent = `Ditemukan ${hardCount > 0 ? hardCount : lowestItems.length} butir soal dengan persentase daya serap terendah di SMAN 2 Mengwi. Disarankan memberikan sesi pengayaan khusus pada nomor soal berikut:`;
+        }
+    } else {
+        if (weakBanner) weakBanner.classList.add('hidden');
+    }
+
+    // 3. Filter & Sort & Search Logic
+    const searchTerm = (document.getElementById('analisis-soal-search')?.value || '').toLowerCase().trim();
+    const filterCat = document.getElementById('analisis-soal-filter')?.value || 'all';
+    const sortBy = document.getElementById('analisis-soal-sort')?.value || 'urutan_asc';
+
+    let filtered = allItems.filter(item => {
+        // Filter by category
+        if (filterCat === 'difficult' && item.category !== 'difficult') return false;
+        if (filterCat === 'medium' && item.category !== 'medium') return false;
+        if (filterCat === 'easy' && item.category !== 'easy') return false;
+        if (filterCat === 'hidden_key' && !item.isSecretKey) return false;
+
+        // Search term
+        if (searchTerm) {
+            const numMatch = item.urutan.toString() === searchTerm || `soal ${item.urutan}`.includes(searchTerm) || `#${item.urutan}`.includes(searchTerm);
+            const indMatch = (item.meta.indikator || '').toLowerCase().includes(searchTerm);
+            const subMatch = (item.meta.subelemen || '').toLowerCase().includes(searchTerm);
+            const elMatch = (item.meta.elemen || '').toLowerCase().includes(searchTerm);
+            const textMatch = item.qData ? (item.qData.pertanyaan || '').toLowerCase().includes(searchTerm) : false;
+            return numMatch || indMatch || subMatch || elMatch || textMatch;
+        }
+
+        return true;
+    });
+
+    // Sorting
+    if (sortBy === 'score_asc') {
+        filtered.sort((a, b) => a.sekScore - b.sekScore);
+    } else if (sortBy === 'score_desc') {
+        filtered.sort((a, b) => b.sekScore - a.sekScore);
+    } else if (sortBy === 'gap_desc') {
+        filtered.sort((a, b) => a.gapNas - b.gapNas); // Most negative gap first
+    } else {
+        filtered.sort((a, b) => a.urutan - b.urutan);
+    }
+
+    // 4. Render Cards
+    container.innerHTML = '';
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm">
+                <span class="text-4xl block mb-3">🔍</span>
+                <p class="text-slate-700 font-bold text-base mb-1">Tidak Ada Soal Ditemukan</p>
+                <p class="text-slate-400 text-xs">Coba sesuaikan kata kunci pencarian atau filter kategori yang dipilih.</p>
+            </div>
+        `;
+        return;
+    }
+
+    filtered.forEach(item => {
+        const card = document.createElement('div');
+        card.className = "bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col gap-4";
+
+        let diffBadgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+        let diffLabel = `🟢 Menguasai (${item.sekScore.toFixed(1)}%)`;
+        if (item.category === 'difficult') {
+            diffBadgeClass = "bg-rose-50 text-rose-700 border-rose-200";
+            diffLabel = `🔴 Perlu Intervensi (${item.sekScore.toFixed(1)}%)`;
+        } else if (item.category === 'medium') {
+            diffBadgeClass = "bg-amber-50 text-amber-700 border-amber-200";
+            diffLabel = `🟡 Kategori Sedang (${item.sekScore.toFixed(1)}%)`;
+        }
+
+        const gapSign = item.gapNas >= 0 ? '+' : '';
+        const gapColor = item.gapNas >= 0 ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : 'text-rose-600 bg-rose-50 border-rose-100';
+
+        // Question HTML & Answer Choices rendering
+        let qBody = '<p class="text-slate-400 italic text-xs">Informasi butir soal belum tersedia di database.</p>';
+        if (item.qData && item.qData.pertanyaan) {
+            qBody = item.qData.pertanyaan;
+        }
+
+        const choices = item.qData ? (item.qData.pilihan || []) : [];
+        let choicesHtml = '';
+        if (choices.length > 0) {
+            choicesHtml = `
+                <div class="mt-4 pt-3 border-t border-slate-200/80 flex flex-col gap-2">
+                    <p class="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                        <span>📝</span> Pilihan Jawaban:
+                    </p>
+                    <div class="grid grid-cols-1 gap-2">
+                        ${choices.map(ch => {
+                            const isCorrect = !item.isSecretKey && isOptionCorrect(ch.key, item.qData.pembahasan);
+                            const choiceBadgeClass = isCorrect 
+                                ? 'bg-emerald-600 text-white font-extrabold shadow-sm' 
+                                : 'bg-slate-100 text-slate-700 font-bold border border-slate-200';
+                            const choiceContainerClass = isCorrect
+                                ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950 font-medium'
+                                : 'bg-white border-slate-200/80 text-slate-700 hover:border-slate-300';
+                            return `
+                                <div class="flex items-start gap-3 p-3 rounded-xl border text-xs md:text-sm leading-relaxed transition-all ${choiceContainerClass}">
+                                    <span class="w-6 h-6 rounded-lg flex items-center justify-center text-xs flex-shrink-0 mt-0.5 ${choiceBadgeClass}">
+                                        ${ch.key}
+                                    </span>
+                                    <div class="flex-grow pt-0.5">${ch.text}</div>
+                                    ${isCorrect ? '<span class="text-[11px] text-emerald-700 font-extrabold flex-shrink-0 self-center bg-emerald-100/90 border border-emerald-300 px-2 py-0.5 rounded-md">✓ Kunci Jawaban</span>' : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        const elemenText = item.meta.elemen ? `Elemen: ${item.meta.elemen}` : '';
+        const indText = item.meta.indikator || item.meta.subelemen || item.meta.elemen || 'Indikator tidak tersedia';
+
+        card.innerHTML = `
+            <!-- Card Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-xl bg-indigo-600 text-white font-extrabold text-sm flex items-center justify-center shadow-sm flex-shrink-0">
+                        ${item.urutan}
+                    </span>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-slate-800 text-sm">Soal #${item.urutan}</span>
+                            ${elemenText ? `<span class="text-[10px] bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-md hidden md:inline-block">${elemenText}</span>` : ''}
+                        </div>
+                        <p class="text-xs text-slate-500 font-medium line-clamp-1 mt-0.5">${indText}</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-xs font-extrabold px-3 py-1 rounded-xl border ${diffBadgeClass}">
+                        ${diffLabel}
+                    </span>
+                    <span class="text-xs font-bold px-2.5 py-1 rounded-xl border ${gapColor}">
+                        ${gapSign}${item.gapNas.toFixed(1)}% vs Nas
+                    </span>
+                </div>
+            </div>
+
+            <!-- Daya Serap 4-Level Progress Bar Grid -->
+            <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                <div>
+                    <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        <span>🏫 SMAN 2 Mengwi</span>
+                        <span class="text-slate-800 font-extrabold">${item.sekScore.toFixed(1)}%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full ${item.sekScore < 40 ? 'bg-rose-500' : (item.sekScore < 70 ? 'bg-amber-500' : 'bg-emerald-500')}" style="width: ${Math.min(100, Math.max(0, item.sekScore))}%"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        <span>🏛️ Kab. Badung</span>
+                        <span class="text-slate-700 font-bold">${item.kabScore.toFixed(1)}%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                        <div class="h-full bg-blue-500 rounded-full" style="width: ${Math.min(100, Math.max(0, item.kabScore))}%"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        <span>🌴 Prov. Bali</span>
+                        <span class="text-slate-700 font-bold">${item.provScore.toFixed(1)}%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                        <div class="h-full bg-indigo-500 rounded-full" style="width: ${Math.min(100, Math.max(0, item.provScore))}%"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        <span>🇮🇩 Nasional</span>
+                        <span class="text-slate-700 font-bold">${item.nasScore.toFixed(1)}%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                        <div class="h-full bg-slate-600 rounded-full" style="width: ${Math.min(100, Math.max(0, item.nasScore))}%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Full Question & Answer Choices Box -->
+            <div class="bg-slate-50/70 border border-slate-200/80 rounded-xl p-4 md:p-5 text-xs md:text-sm text-slate-800 leading-relaxed custom-question-card flex flex-col gap-2">
+                <div class="font-medium text-slate-900 leading-normal">
+                    ${qBody}
+                </div>
+                ${choicesHtml}
+            </div>
+
+            <!-- Card Footer & Actions -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                <div class="flex items-center gap-2">
+                    ${item.isSecretKey ? 
+                        `<span class="bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                            🔒 Kunci Dirahasiakan PAP • ✨ Gemini AI Ready
+                        </span>` : 
+                        `<span class="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                            ✅ Pembahasan Resmi PAP Tersedia
+                        </span>`
+                    }
+                </div>
+
+                <div class="flex items-center gap-2 self-end sm:self-auto">
+                    <button class="btn-open-soal bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-sm" data-urutan="${item.urutan}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        Buka & Analisis Soal
+                    </button>
+                </div>
+            </div>
+        `;
+
+        const btnOpen = card.querySelector('.btn-open-soal');
+        if (btnOpen) {
+            btnOpen.addEventListener('click', () => {
+                openQuestionModal(kdMapel, item.urutan);
+            });
+        }
+
+        container.appendChild(card);
     });
 }
 

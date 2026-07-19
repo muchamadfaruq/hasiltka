@@ -276,6 +276,18 @@ app.get('/api/contoh-soal', async (req, res) => {
     }
 });
 
+// 5.5. Get All Questions directly from SQLite Database
+app.get('/api/questions-all', (req, res) => {
+    try {
+        const groupedQuestions = getAllQuestionsGrouped();
+        res.json(groupedQuestions);
+    } catch (error) {
+        console.error('questions-all error:', error.message);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+
 // 6. Get Daya Serap + Perbandingan (Nasional vs Provinsi vs Kabupaten vs Sekolah) (With SQLite Cache)
 app.get('/api/daya-serap', async (req, res) => {
     const { kd_mapel, kd_prop, kd_rayon, kd_sek, refresh } = req.query;

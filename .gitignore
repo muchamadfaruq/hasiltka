@@ -1,0 +1,4 @@
+node_modules
+tka_cache.db-shm
+tka_cache.db-wal
+.DS_Store

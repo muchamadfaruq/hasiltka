@@ -6,7 +6,22 @@ Dokumen ini mencatat riwayat pembaruan, perbaikan bug, integrasi fitur, dan opti
 
 ## 📅 Riwayat Pembaruan
 
-### Pembaruan Terbaru: 19 Juli 2026 (Sesi 5)
+### Pembaruan Terbaru: 19 Juli 2026 (Sesi 6)
+* **Penyajian Soal Utuh & Pilihan Jawaban (Tab `Analisis Soal`)**:
+  * Mengubah kartu pada tab **Analisis Soal** agar menampilkan **teks soal secara utuh** (tanpa pemotongan tinggi) beserta **seluruh pilihan jawaban A, B, C, D, E** di setiap kartu.
+  * Opsi jawaban yang benar di-highlight hijau secara otomatis dengan penanda `✓ Kunci Jawaban`.
+  * Menambahkan style CSS khusus untuk gambar dan tabel di dalam soal agar tampil secara responsif di semua ukuran layar.
+* **Integrasi Database Endpoint `/api/questions-all`**:
+  * Membangun endpoint `/api/questions-all` untuk menyajikan seluruh data bank soal langsung dari tabel `questions` di database SQLite (`tka_cache.db`).
+  * Mengubah frontend (`getOrFetchQuestionsCache`) agar memprioritaskan pengambilan data soal langsung dari database SQLite (<10ms).
+  * Memperbaiki bug pengecekan `status_code` pada respon API server serta pembacaan hierarki `detail_hierarchy` sehingga nama indikator kompetensi tampil 100% akurat.
+* **Navigasi Hamburger Menu Responsif (Mobile View)**:
+  * Merombak antarmuka navigasi ponsel (`< md`) dari strip horizontal scrollable menjadi **Hamburger Menu interaktif** dengan ikon `☰` dan `✕`.
+  * Menambahkan logika *auto-collapse* yang otomatis menutup menu mobile setelah pengguna memilih tab.
+* **Rebuild & Deployment Docker**:
+  * Melakukan kompilasi ulang image Docker dan me-restart container `hasiltka` untuk menerapkan perubahan pada server produksi.
+
+### Pembaruan Sebelumnya: 19 Juli 2026 (Sesi 5)
 * **Fitur Analisis Peringkat Sekolah per Kabupaten Badung (`🏆 Peringkat Sekolah`)**:
   * Membangun endpoint `/api/peringkat-sekolah` yang secara otomatis mengkalkulasi rerata daya serap seluruh 68 sekolah di Kabupaten Badung per mata pelajaran.
   * Mengurutkan peringkat (*ranking*) sekolah dari posisi #1 hingga #68 secara otomatis.

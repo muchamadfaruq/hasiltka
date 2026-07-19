@@ -46,13 +46,26 @@
       (function() {
         function checkHash() {
           var hash = (window.location.hash || '').replace('#', '');
-          if (hash === 'peringkat') {
-            var pView = document.getElementById('peringkat-view');
-            var dView = document.getElementById('dashboard-view');
-            var sView = document.getElementById('sman2mengwi-view');
+          var pView = document.getElementById('peringkat-view');
+          var dView = document.getElementById('dashboard-view');
+          var sView = document.getElementById('sman2mengwi-view');
+          var aView = document.getElementById('analisis-soal-view');
+
+          if (hash === 'peringkat' && pView) {
             if (pView) pView.classList.remove('hidden');
             if (dView) dView.classList.add('hidden');
             if (sView) sView.classList.add('hidden');
+            if (aView) aView.classList.add('hidden');
+          } else if (hash === 'analisis-soal' && aView) {
+            if (aView) aView.classList.remove('hidden');
+            if (dView) dView.classList.add('hidden');
+            if (sView) sView.classList.add('hidden');
+            if (pView) pView.classList.add('hidden');
+          } else if (hash === 'sman2mengwi' && sView) {
+            if (sView) sView.classList.remove('hidden');
+            if (dView) dView.classList.add('hidden');
+            if (pView) pView.classList.add('hidden');
+            if (aView) aView.classList.add('hidden');
           }
         }
         window.addEventListener('DOMContentLoaded', checkHash);
@@ -94,6 +107,24 @@
             border-top-color: #2563eb;
             border-radius: 50%;
             animation: spin 1s linear infinite;
+        }
+
+        .custom-question-card img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.75rem;
+            margin: 0.5rem 0;
+            display: block;
+        }
+        .custom-question-card table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.5rem 0;
+        }
+        .custom-question-card th, .custom-question-card td {
+            border: 1px solid #e2e8f0;
+            padding: 0.5rem;
+            text-align: left;
         }
         
         /* Dropdown custom style */
@@ -567,37 +598,57 @@
 </head>
 <body class="text-slate-800 font-sans antialiased">
     <div class="flex flex-col md:flex-row min-h-screen">
-        <!-- Sidebar Navigation (SMAN 2 Mengwi Logo Integrated) -->
-        <aside class="w-full md:w-[260px] bg-white border-b md:border-b-0 md:border-r border-slate-200 p-5 md:p-8 flex flex-col flex-shrink-0">
-            <div class="flex items-center gap-3 mb-6 md:mb-10">
-                <!-- Integrated SMAN 2 Mengwi Official Logo -->
-                <img src="https://dwisma.id/img/Logo%20Dwisma.png" alt="Logo SMAN 2 Mengwi" class="w-10 h-10 object-contain flex-shrink-0">
-                <div>
-                    <h2 class="text-xs font-bold tracking-tight text-slate-900 leading-tight">SMAN 2 Mengwi</h2>
-                    <span class="text-[10px] text-slate-400 font-medium">Portal Analisis TKA</span>
+        <!-- Sidebar Navigation (Responsive Hamburger Menu Integrated) -->
+        <aside class="w-full md:w-[260px] bg-white border-b md:border-b-0 md:border-r border-slate-200 p-4 md:p-8 flex flex-col flex-shrink-0 z-30 relative shadow-sm md:shadow-none">
+            <!-- Sidebar Header / Mobile Topbar -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <!-- Integrated SMAN 2 Mengwi Official Logo -->
+                    <img src="https://dwisma.id/img/Logo%20Dwisma.png" alt="Logo SMAN 2 Mengwi" class="w-9 h-9 md:w-10 md:h-10 object-contain flex-shrink-0">
+                    <div>
+                        <h2 class="text-xs md:text-sm font-extrabold tracking-tight text-slate-900 leading-tight">SMAN 2 Mengwi</h2>
+                        <span class="text-[10px] text-slate-400 font-medium">Portal Analisis TKA</span>
+                    </div>
                 </div>
+
+                <!-- Hamburger Button (Visible on mobile screens only) -->
+                <button id="btn-hamburger" aria-label="Toggle Menu Navigation" class="md:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all focus:outline-none border border-slate-200 cursor-pointer">
+                    <svg id="hamburger-icon-open" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                    <svg id="hamburger-icon-close" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
             </div>
             
-            <nav class="flex flex-row md:flex-col gap-2 flex-grow overflow-x-auto pb-2 md:pb-0">
-                <a href="#dashboard" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 no-underline rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap active sidebar-link active" id="nav-dashboard">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                    Analisis Pelajaran
-                </a>
-                <a href="#sman2mengwi" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 no-underline rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap sidebar-link" id="nav-sman2mengwi">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-                    Capaian Semua Mapel
-                </a>
-                <a href="#peringkat" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 no-underline rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap sidebar-link" id="nav-peringkat">
-                    <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
-                    Peringkat Sekolah
-                </a>
-                <a href="https://tka.kemendikdasmen.go.id/hasiltka" target="_blank" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 no-underline rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                    Portal Resmi TKA
-                </a>
-            </nav>
-            <div class="text-[10px] text-slate-400 text-center mt-4 hidden md:block">
-                SMAN 2 Mengwi &copy; 2026
+            <!-- Mobile Menu Dropdown / Desktop Sidebar Navigation -->
+            <div id="mobile-menu-wrapper" class="hidden md:flex flex-col gap-2 mt-4 md:mt-8 flex-grow">
+                <nav class="flex flex-col gap-1.5 flex-grow">
+                    <a href="#dashboard" class="flex items-center gap-3 px-4 py-2.5 text-slate-600 no-underline rounded-xl text-sm font-semibold transition-all duration-200 hover:bg-slate-50 sidebar-link active" id="nav-dashboard">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        Analisis Pelajaran
+                    </a>
+                    <a href="#sman2mengwi" class="flex items-center gap-3 px-4 py-2.5 text-slate-600 no-underline rounded-xl text-sm font-semibold transition-all duration-200 hover:bg-slate-50 sidebar-link" id="nav-sman2mengwi">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        Capaian Semua Mapel
+                    </a>
+                    <a href="#peringkat" class="flex items-center gap-3 px-4 py-2.5 text-slate-600 no-underline rounded-xl text-sm font-semibold transition-all duration-200 hover:bg-slate-50 sidebar-link" id="nav-peringkat">
+                        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+                        Peringkat Sekolah
+                    </a>
+                    <a href="#analisis-soal" class="flex items-center gap-3 px-4 py-2.5 text-slate-600 no-underline rounded-xl text-sm font-semibold transition-all duration-200 hover:bg-slate-50 sidebar-link" id="nav-analisis-soal">
+                        <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        Analisis Soal
+                    </a>
+                    <a href="https://tka.kemendikdasmen.go.id/hasiltka" target="_blank" class="flex items-center gap-3 px-4 py-2.5 text-slate-500 no-underline rounded-xl text-sm font-semibold transition-all duration-200 hover:bg-slate-50">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                        Portal Resmi TKA
+                    </a>
+                </nav>
+                <div class="text-[10px] text-slate-400 text-center mt-4 hidden md:block border-t border-slate-100 pt-4">
+                    SMAN 2 Mengwi &copy; 2026
+                </div>
             </div>
         </aside>
 
@@ -989,6 +1040,138 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analisis Butir Soal View -->
+                <div class="dashboard-body hidden" id="analisis-soal-view">
+                    <!-- Header Summary Banner -->
+                    <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 rounded-3xl p-6 md:p-8 text-white shadow-xl mb-8 relative overflow-hidden">
+                        <div class="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
+                            <svg class="w-72 h-72" fill="currentColor" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        </div>
+                        <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-3xl flex-shrink-0">
+                                    📝
+                                </div>
+                                <div>
+                                    <span class="bg-blue-500/30 text-blue-200 text-[10px] uppercase font-bold tracking-widest px-3 py-1 rounded-full backdrop-blur-md inline-block mb-2 border border-blue-400/30">Portal Analisis Butir Soal TKA</span>
+                                    <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight">Analisis Butir Soal</h2>
+                                    <p class="text-slate-300 text-xs md:text-sm mt-1">Evaluasi mendalam per nomor soal, tingkat kesukaran, perbandingan daya serap, serta pembahasan AI.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white/10 border border-white/20 rounded-2xl p-4 min-w-[220px] backdrop-blur-md self-stretch md:self-auto flex flex-col justify-center">
+                                <span class="text-[10px] text-slate-300 font-bold uppercase tracking-wider block mb-1">MATA PELAJARAN</span>
+                                <select id="analisis-soal-select-mapel" class="bg-slate-800/90 text-white border border-white/20 text-xs font-semibold px-3 py-2 rounded-xl outline-none cursor-pointer w-full shadow-inner">
+                                    <!-- Populated dynamically -->
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Executive KPI Stats Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                        <!-- Total & Average Score Card -->
+                        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center text-2xl flex-shrink-0">📊</div>
+                            <div>
+                                <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Rata-Rata Daya Serap</span>
+                                <div class="flex items-baseline gap-2 mt-0.5">
+                                    <span class="text-2xl font-extrabold text-slate-900" id="as-stat-avg">--%</span>
+                                    <span class="text-xs text-slate-500 font-semibold" id="as-stat-nas-gap">-- vs Nas</span>
+                                </div>
+                                <span class="text-[11px] text-slate-400 font-medium" id="as-stat-total-soal">30 Butir Soal</span>
+                            </div>
+                        </div>
+
+                        <!-- Soal Perlu Intervensi (<40%) -->
+                        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center text-2xl flex-shrink-0">⚠️</div>
+                            <div>
+                                <span class="text-[10px] uppercase font-bold tracking-wider text-rose-500 block">Perlu Intervensi (&lt;40%)</span>
+                                <div class="text-2xl font-extrabold text-rose-600 mt-0.5" id="as-stat-hard-count">0 Soal</div>
+                                <span class="text-[11px] text-slate-400 font-medium" id="as-stat-hard-info">Prioritas Pengayaan</span>
+                            </div>
+                        </div>
+
+                        <!-- Soal Sedang (40-70%) -->
+                        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center text-2xl flex-shrink-0">⚡</div>
+                            <div>
+                                <span class="text-[10px] uppercase font-bold tracking-wider text-amber-500 block">Kategori Sedang (40-70%)</span>
+                                <div class="text-2xl font-extrabold text-amber-600 mt-0.5" id="as-stat-mid-count">0 Soal</div>
+                                <span class="text-[11px] text-slate-400 font-medium">Perlu Pemantauan</span>
+                            </div>
+                        </div>
+
+                        <!-- Soal Menguasai (>70%) -->
+                        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center text-2xl flex-shrink-0">🎯</div>
+                            <div>
+                                <span class="text-[10px] uppercase font-bold tracking-wider text-emerald-500 block">Tinggi / Menguasai (&gt;70%)</span>
+                                <div class="text-2xl font-extrabold text-emerald-600 mt-0.5" id="as-stat-easy-count">0 Soal</div>
+                                <span class="text-[11px] text-slate-400 font-medium">Capaian Baik</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weak Points Remediation Alert Banner -->
+                    <div class="bg-rose-50 border border-rose-200 rounded-2xl p-5 mb-8 shadow-sm hidden" id="as-weak-banner">
+                        <div class="flex items-start gap-4">
+                            <span class="text-2xl flex-shrink-0">💡</span>
+                            <div class="flex-grow">
+                                <h4 class="font-extrabold text-rose-900 text-sm mb-1">Rekomendasi Intervensi Belajar SMAN 2 Mengwi</h4>
+                                <p class="text-xs text-rose-700 leading-relaxed mb-3" id="as-weak-summary-text">
+                                    Ditemukan beberapa butir soal dengan daya serap paling rendah di sekolah. Disarankan melakukan pendalaman materi untuk nomor soal berikut:
+                                </p>
+                                <div class="flex flex-wrap gap-2" id="as-weak-chips">
+                                    <!-- Badges for bottom questions -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter & Search Controls Bar -->
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4 md:p-6 shadow-sm mb-6 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+                        <!-- Search Input -->
+                        <div class="relative flex-grow max-w-md">
+                            <input type="text" id="analisis-soal-search" placeholder="Cari no. soal, materi, atau kata dalam soal..." class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:border-blue-600 outline-none transition-all">
+                            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        </div>
+
+                        <!-- Filter Pill Options & Sort Selector -->
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="flex flex-col gap-1 w-full sm:w-auto">
+                                <label class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Kategori Daya Serap</label>
+                                <select id="analisis-soal-filter" class="custom-select px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer min-w-[170px]">
+                                    <option value="all" selected>Semua Soal</option>
+                                    <option value="difficult">🔴 Perlu Intervensi (&lt;40%)</option>
+                                    <option value="medium">🟡 Sedang (40% - 70%)</option>
+                                    <option value="easy">🟢 Menguasai (&gt;70%)</option>
+                                    <option value="hidden_key">🔒 Kunci Dirahasiakan</option>
+                                </select>
+                            </div>
+                            
+                            <div class="flex flex-col gap-1 w-full sm:w-auto">
+                                <label class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Urutkan Berdasarkan</label>
+                                <select id="analisis-soal-sort" class="custom-select px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer min-w-[180px]">
+                                    <option value="urutan_asc" selected>Nomor Soal (1 - 30)</option>
+                                    <option value="score_asc">Daya Serap SMAN 2 (Terendah)</option>
+                                    <option value="score_desc">Daya Serap SMAN 2 (Tertinggi)</option>
+                                    <option value="gap_desc">Gap vs Nasional (Terburuk)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Questions Container / Cards Grid -->
+                    <div class="flex flex-col gap-4" id="analisis-soal-cards-container">
+                        <div class="flex flex-col items-center justify-center py-16 bg-white border border-slate-200 rounded-2xl">
+                            <div class="spinner border-2 w-8 h-8 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+                            <p class="text-slate-500 font-semibold text-sm">Memuat data analisis butir soal...</p>
                         </div>
                     </div>
                 </div>

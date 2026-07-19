@@ -30,16 +30,30 @@ Bagi butir-butir soal ujian nasional yang kunci jawaban dan pembahasannya diraha
 * Guru dapat menghubungkan **Gemini API Key** gratis mereka (disimpan aman secara lokal di `localStorage` browser).
 * Menggunakan model **`gemini-2.5-flash`** untuk membedah soal, menentukan kunci jawaban yang benar, menulis pembahasan langkah-demi-langkah, dan langsung menyorot jawaban yang tepat di daftar pilihan secara dinamis.
 
-### 5. Ekspor Dokumen Bank Soal & Pembahasan
+### 5. Analisis Butir Soal Utuh & Opsi Jawaban (A–E)
+Pada tab **Analisis Soal**:
+* Menampilkan **teks soal secara utuh** beserta **seluruh pilihan jawaban (A, B, C, D, E)** di setiap kartu soal.
+* Kunci jawaban yang benar di-highlight warna hijau secara otomatis dengan penanda `✓ Kunci Jawaban`.
+* Dilengkapi grafik 4-level progress bar daya serap (Sekolah vs Kabupaten vs Provinsi vs Nasional) dan fitur ekspor bank soal.
+
+### 6. Navigasi Hamburger Menu Responsif
+* Tampilan ponsel (`< md`) menggunakan **Hamburger Menu interaktif** (`☰` / `✕`) untuk kerapian tata letak.
+* Menu otomatis menutup (*auto-collapse*) begitu pengguna berpindah tab.
+
+### 7. Ekspor Dokumen Bank Soal & Pembahasan
 Memungkinkan sekolah mengunduh seluruh contoh soal dari 22 mata pelajaran sekaligus:
 * **Format TXT**: Dokumen teks polos (*plain text*) yang bersih dan ringkas.
 * **Format DOC**: Dokumen Word yang didesain menggunakan HTML MSWord khusus agar rapi saat dibuka di Microsoft Word atau Google Docs.
 * **Format PDF**: Reruntutan cetak beresolusi tinggi dengan logo sekolah resmi dan tata letak print-friendly (*auto-print print dialog*).
-* **Scraper Latar Belakang & Caching**: Server lokal akan men-download dan membuat cache data soal secara mandiri di disk (`questions_cache.json`) pada unduhan pertama dengan visualisasi *progress bar* interaktif di frontend. Unduhan selanjutnya berjalan instan (<10ms).
 
 ---
 
 ## 🛠️ Arsitektur & Teknologi Stack
+
+### Database & Caching (SQLite3)
+* **SQLite3 & Better-SQLite3**: Menyimpan data bank soal (tabel `questions`, 630 butir soal) dan caching respon API Kemendikdasmen (tabel `api_cache`).
+* **Mode WAL (Write-Ahead Logging)**: Menjamin performa baca/tulis tinggi dan latency rendah (<10ms).
+* **Endpoint `/api/questions-all`**: Mengalirkan data bank soal langsung dari database SQLite3 ke frontend.
 
 ### Backend (Node.js & Express)
 * **Express.js**: Menangani API router dan server statis.
@@ -49,7 +63,7 @@ Memungkinkan sekolah mengunduh seluruh contoh soal dari 22 mata pelajaran sekali
 
 ### Frontend (Vanilla JS & Tailwind)
 * **HTML5 & Vanilla Javascript (ES6)**: Logika dan manipulasi DOM murni.
-* **Tailwind CSS Play CDN (v3)**: Desain sistem bertema Terang (Light Mode) dengan aksen warna Biru (Royal Blue).
+* **Tailwind CSS (v3)**: Desain sistem bertema Terang (Light Mode) dengan aksen warna Biru (Royal Blue).
 * **Chart.js v4 (Lokal)**: Digunakan untuk merender grafik perbandingan regional lintas elemen dan per butir soal secara responsif.
 
 ---
@@ -63,8 +77,13 @@ tka-dashboard/
 │   ├── chart.js                # Library Chart.js v4 Lokal
 │   ├── index.html              # Antarmuka (HTML5, Tailwind, & Custom CSS)
 │   └── questions_cache.json    # Berkas Cache Hasil Scraper Bank Soal (Auto-generated)
+├── db.js                       # Konfigurasi & Prepared Statements SQLite3
 ├── server.js                   # Server Express.js, Scraper, & API Router
-├── package.json                # Dependensi Project (Express, Crypto-JS)
+├── seed_all.js                 # Skrip Seeding Massal Cache SQLite3
+├── tka_cache.db                # Database SQLite3 (Tabel api_cache & questions)
+├── Dockerfile                  # Konfigurasi Build Container Node 20-slim
+├── docker-compose.yml          # Konfigurasi Container Orchestration
+├── package.json                # Dependensi Project (Express, Better-SQLite3, Crypto-JS)
 ├── README.md                   # Dokumentasi Utama Panduan Proyek
 └── log.md                      # Log Pembaruan & Riwayat Pengembangan
 ```
