@@ -293,6 +293,8 @@ async function initializeApp() {
                     if (iconClose) iconClose.classList.add('hidden');
                 }
             });
+        }
+
         // Database Cache Stats & Sync Handler
         const btnSyncDb = document.getElementById('btn-sync-db');
         if (btnSyncDb) {
