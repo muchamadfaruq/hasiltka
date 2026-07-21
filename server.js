@@ -452,10 +452,11 @@ app.get('/api/daya-serap', async (req, res) => {
 
 // 6b. Get Peringkat Sekolah per Kabupaten/Rayon
 app.get('/api/peringkat-sekolah', async (req, res) => {
-    let { kd_mapel, kd_prop, kd_rayon, refresh } = req.query;
+    let { kd_mapel, kd_prop, kd_rayon, kd_sek, refresh } = req.query;
     if (!kd_mapel || kd_mapel === 'undefined' || kd_mapel === 'null' || kd_mapel.trim() === '') kd_mapel = 'ABINW';
     if (!kd_prop || kd_prop === 'undefined' || kd_prop === 'null' || kd_prop.trim() === '') kd_prop = '22';
     if (!kd_rayon || kd_rayon === 'undefined' || kd_rayon === 'null' || kd_rayon.trim() === '') kd_rayon = '2209';
+    if (!kd_sek || kd_sek === 'undefined' || kd_sek === 'null' || kd_sek.trim() === '') kd_sek = 'U22090017';
     const forceRefresh = refresh === 'true';
 
     try {
@@ -517,7 +518,7 @@ app.get('/api/peringkat-sekolah', async (req, res) => {
                 jenjang: item.jenjang || 'SMA',
                 avg: parseFloat(avg.toFixed(2)),
                 questionsCount: count,
-                isTarget: item.npsn === '50101684' || (item.nm_sek || '').toUpperCase().includes('SMAN 2 MENGWI')
+                isTarget: (item.kd_sek_full || '').endsWith(kd_sek)
             };
         });
 
@@ -549,19 +550,18 @@ app.get('/api/peringkat-sekolah', async (req, res) => {
 // 7. Get SMAN 2 Mengwi All Subjects Summary (dengan SQLite & In-Memory Caching)
 app.get('/api/sman2mengwi/summary', async (req, res) => {
     const forceRefresh = req.query.refresh === 'true';
+    const kd_prop = req.query.kd_prop || "22";
+    const kd_rayon = req.query.kd_rayon || "2209";
+    const kd_sek = req.query.kd_sek || "U22090017";
 
-    // 1. In-memory hit (fastest)
-    if (sman2MengwiCache && !forceRefresh) {
-        return res.json(sman2MengwiCache);
-    }
+    const paramsKey = { kd_prop, kd_rayon, kd_sek };
 
-    // 2. SQLite Cache hit
+    // 1. SQLite Cache hit
     if (!forceRefresh) {
-        const sqliteCached = getApiCache('sman2mengwi/summary', {});
+        const sqliteCached = getApiCache('sman2mengwi/summary', paramsKey);
         if (sqliteCached) {
-            console.log('[SQLite Cache HIT] SMAN 2 Mengwi Summary loaded from SQLite');
-            sman2MengwiCache = sqliteCached.data;
-            return res.json(sman2MengwiCache);
+            console.log(`[SQLite Cache HIT] School Summary loaded for ${kd_sek}`);
+            return res.json(sqliteCached.data);
         }
     }
 
@@ -581,11 +581,7 @@ app.get('/api/sman2mengwi/summary', async (req, res) => {
             { kd: "AJEPP", name: "Bahasa Jepang", code: "JEP" }
         ];
 
-        const kd_prop = "22";
-        const kd_rayon = "2209";
-        const kd_sek = "U22090017"; // SMAN 2 Mengwi
-
-        console.log("Pre-fetching SMAN 2 Mengwi data for caching...");
+        console.log(`Pre-fetching school summary data for ${kd_sek}...`);
 
         const promises = activeSubjects.map(async (subj) => {
             try {
@@ -658,17 +654,18 @@ app.get('/api/sman2mengwi/summary', async (req, res) => {
 
         const summary = await Promise.all(promises);
         
-        sman2MengwiCache = {
+        const responseObj = {
             success: true,
-            schoolName: "SMA Negeri 2 Mengwi",
-            npsn: "50101684",
+            kd_prop,
+            kd_rayon,
+            kd_sek,
             data: summary
         };
 
         // Cache in SQLite
-        setApiCache('sman2mengwi/summary', {}, sman2MengwiCache);
+        setApiCache('sman2mengwi/summary', paramsKey, responseObj);
 
-        res.json(sman2MengwiCache);
+        res.json(responseObj);
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

@@ -17,10 +17,10 @@ let rawSmanHierarchy = []; // Caches the raw hierarchy data for SMAN 2 Mengwi De
 let rawSmanElemenSummary = [];
 let rawSmanKdMapel = '';
 
-// Dynamic Region & School Codes (Defaults to SMAN 2 Mengwi, Kab. Badung, Bali)
-let SMAN_PROP = "22";     // Bali
-let SMAN_RAYON = "2209";   // Kab. Badung
-let SMAN_SEK = "U22090017"; // SMA Negeri 2 Mengwi
+// Dynamic Region & School Codes (Restore from localStorage or default to SMAN 2 Mengwi)
+let SMAN_PROP = localStorage.getItem('selected_kd_prop') || "22";
+let SMAN_RAYON = localStorage.getItem('selected_kd_rayon') || "2209";
+let SMAN_SEK = localStorage.getItem('selected_kd_sek') || "U22090017";
 
 // DOM Elements
 const selectProvinsi = document.getElementById('select-provinsi');
@@ -105,6 +105,99 @@ const modalExplanationSection = document.getElementById('modal-explanation-secti
 const modalExplanationHtml = document.getElementById('modal-explanation-html');
 
 // Helper to determine color classes based on value (0-100) - Vibrant Light Mode Colors
+function debounce(fn, delay) {
+    let timer;
+    return function (...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
+function getCurrentSchoolName() {
+    if (selectSekolah && selectSekolah.options && selectSekolah.options[selectSekolah.selectedIndex]) {
+        return selectSekolah.options[selectSekolah.selectedIndex].text.trim();
+    }
+    return "SMA NEGERI 2 MENGWI";
+}
+
+function getCurrentRayonName() {
+    if (selectRayon && selectRayon.options && selectRayon.options[selectRayon.selectedIndex]) {
+        return selectRayon.options[selectRayon.selectedIndex].text.trim();
+    }
+    return "KABUPATEN BADUNG";
+}
+
+function getCurrentProvinsiName() {
+    if (selectProvinsi && selectProvinsi.options && selectProvinsi.options[selectProvinsi.selectedIndex]) {
+        return selectProvinsi.options[selectProvinsi.selectedIndex].text.trim();
+    }
+    return "BALI";
+}
+
+function updateSchoolNameLabels() {
+    const schoolName = getCurrentSchoolName();
+    const rayonName = getCurrentRayonName();
+    const provName = getCurrentProvinsiName();
+
+    const elPageTitle = document.getElementById('page-title');
+    if (elPageTitle) elPageTitle.textContent = `${schoolName} - Portal Analisis TKA`;
+    document.title = `${schoolName} - Portal Analisis TKA`;
+
+    const elSidebarName = document.getElementById('sidebar-school-name');
+    if (elSidebarName) elSidebarName.textContent = schoolName;
+
+    const elSidebarFooter = document.getElementById('sidebar-footer-text');
+    if (elSidebarFooter) elSidebarFooter.textContent = schoolName;
+
+    const elLoadingText = document.getElementById('state-loading-text');
+    if (elLoadingText) elLoadingText.textContent = `Memuat data ${schoolName}...`;
+
+    const elGlobalHeader = document.getElementById('global-header-school-name');
+    if (elGlobalHeader) elGlobalHeader.textContent = schoolName;
+
+    const elGlobalHeaderInfo = document.getElementById('global-header-school-info');
+    if (elGlobalHeaderInfo) elGlobalHeaderInfo.textContent = `${rayonName}, ${provName}`;
+
+    const elCardLabel = document.getElementById('label-school-card');
+    if (elCardLabel) elCardLabel.textContent = schoolName.toUpperCase();
+
+    const elRayonCardLabel = document.getElementById('label-rayon-card');
+    if (elRayonCardLabel) elRayonCardLabel.textContent = rayonName.toUpperCase();
+
+    const elProvCardLabel = document.getElementById('label-provinsi-card');
+    if (elProvCardLabel) elProvCardLabel.textContent = `Prov. ${provName}`;
+
+    const elTab2Title = document.getElementById('tab2-school-title');
+    if (elTab2Title) elTab2Title.textContent = schoolName;
+
+    const elTab2Info = document.getElementById('tab2-school-info');
+    if (elTab2Info) elTab2Info.textContent = `${rayonName}, ${provName}`;
+
+    const elTab2Sub = document.getElementById('tab2-school-subtitle');
+    if (elTab2Sub) elTab2Sub.textContent = `Perbandingan daya serap ${schoolName} terhadap ${rayonName} dan Nasional untuk semua mata pelajaran`;
+
+    const elTab2SekHeader = document.getElementById('th-tab2-sek-header');
+    if (elTab2SekHeader) elTab2SekHeader.textContent = schoolName;
+
+    const elTab2RayonHeader = document.getElementById('th-tab2-rayon-header');
+    if (elTab2RayonHeader) elTab2RayonHeader.textContent = rayonName;
+
+    const elPeringkatHeader = document.getElementById('peringkat-header-title');
+    if (elPeringkatHeader) elPeringkatHeader.textContent = `Peringkat Sekolah - ${rayonName}`;
+
+    const elPeringkatLabel = document.getElementById('peringkat-target-label');
+    if (elPeringkatLabel) elPeringkatLabel.textContent = `POSISI ${schoolName.toUpperCase()}`;
+
+    const elPeringkatLoading = document.getElementById('peringkat-loading-text');
+    if (elPeringkatLoading) elPeringkatLoading.textContent = `Menghitung peringkat sekolah ${rayonName}...`;
+
+    const elPeringkatTableLoading = document.getElementById('peringkat-table-loading-text');
+    if (elPeringkatTableLoading) elPeringkatTableLoading.textContent = `Memuat peringkat sekolah ${rayonName}...`;
+
+    const elWeakTitle = document.getElementById('as-weak-banner-title');
+    if (elWeakTitle) elWeakTitle.textContent = `Rekomendasi Intervensi Belajar ${schoolName}`;
+}
+
 function getColorClass(value, type = 'text') {
     if (value >= 60) {
         return type === 'bg' ? 'bg-green' : 'val-green';
@@ -267,57 +360,6 @@ async function initializeApp() {
             }
         }
 
-        function updateSchoolNameLabels() {
-            let schoolName = "SMA NEGERI 2 MENGWI";
-            if (selectSekolah && selectSekolah.options && selectSekolah.options[selectSekolah.selectedIndex]) {
-                schoolName = selectSekolah.options[selectSekolah.selectedIndex].text.trim();
-            }
-
-            let rayonName = "KABUPATEN BADUNG";
-            if (selectRayon && selectRayon.options && selectRayon.options[selectRayon.selectedIndex]) {
-                rayonName = selectRayon.options[selectRayon.selectedIndex].text.trim();
-            }
-
-            let provName = "BALI";
-            if (selectProvinsi && selectProvinsi.options && selectProvinsi.options[selectProvinsi.selectedIndex]) {
-                provName = selectProvinsi.options[selectProvinsi.selectedIndex].text.trim();
-            }
-
-            // 1. Global Header Title & Info
-            const elGlobalHeader = document.getElementById('global-header-school-name');
-            if (elGlobalHeader) elGlobalHeader.textContent = schoolName;
-
-            const elGlobalHeaderInfo = document.getElementById('global-header-school-info');
-            if (elGlobalHeaderInfo) elGlobalHeaderInfo.textContent = `${rayonName}, ${provName}`;
-
-            // 2. Tab 1 Stat Cards Labels
-            const elCardLabel = document.getElementById('label-school-card');
-            if (elCardLabel) elCardLabel.textContent = schoolName.toUpperCase();
-
-            const elRayonCardLabel = document.getElementById('label-rayon-card');
-            if (elRayonCardLabel) elRayonCardLabel.textContent = rayonName.toUpperCase();
-
-            // 3. Tab 2 Titles, Headers & Subtitles
-            const elTab2Title = document.getElementById('tab2-school-title');
-            if (elTab2Title) elTab2Title.textContent = schoolName;
-
-            const elTab2Info = document.getElementById('tab2-school-info');
-            if (elTab2Info) elTab2Info.textContent = `${rayonName}, ${provName}`;
-
-            const elTab2Sub = document.getElementById('tab2-school-subtitle');
-            if (elTab2Sub) elTab2Sub.textContent = `Perbandingan daya serap ${schoolName} terhadap ${rayonName} dan Nasional untuk semua mata pelajaran`;
-
-            const elTab2SekHeader = document.getElementById('th-tab2-sek-header');
-            if (elTab2SekHeader) elTab2SekHeader.textContent = schoolName;
-
-            const elTab2RayonHeader = document.getElementById('th-tab2-rayon-header');
-            if (elTab2RayonHeader) elTab2RayonHeader.textContent = rayonName;
-
-            // 4. Tab 3 Peringkat Header
-            const elPeringkatHeader = document.getElementById('peringkat-header-title');
-            if (elPeringkatHeader) elPeringkatHeader.textContent = `Peringkat Sekolah - ${rayonName}`;
-        }
-
         function reloadCurrentActiveTab() {
             updateSchoolNameLabels();
 
@@ -328,7 +370,7 @@ async function initializeApp() {
             if (dashboardView && !dashboardView.classList.contains('hidden')) {
                 loadDashboardData(valMapel);
             } else if (sman2mengwiView && !sman2mengwiView.classList.contains('hidden')) {
-                loadSman2MengwiSummaryData();
+                loadSmanSummary();
             } else if (peringkatView && !peringkatView.classList.contains('hidden')) {
                 loadPeringkatData(valMapel);
             } else if (analisisSoalView && !analisisSoalView.classList.contains('hidden')) {
@@ -336,46 +378,54 @@ async function initializeApp() {
             }
         }
 
+        const debouncedReload = debounce(reloadCurrentActiveTab, 400);
+
         // Add Event Listener for Mapel Filter
         selectMapel.addEventListener('change', () => {
             const val = selectMapel.value;
             if (val) {
                 localStorage.setItem('selected_kd_mapel', val);
             }
-            reloadCurrentActiveTab();
+            debouncedReload();
         });
 
         // Add Event Listeners for Regional Filters (Provinsi, Rayon, Sekolah)
         if (selectProvinsi) {
             selectProvinsi.addEventListener('change', async () => {
                 SMAN_PROP = selectProvinsi.value;
+                SMAN_RAYON = '';
+                SMAN_SEK = '';
                 await loadRayonDropdown(SMAN_PROP);
-                if (selectRayon && selectRayon.options.length > 0) {
-                    SMAN_RAYON = selectRayon.value;
-                    await loadSekolahDropdown(SMAN_RAYON);
-                    if (selectSekolah && selectSekolah.options.length > 0) {
-                        SMAN_SEK = selectSekolah.value;
-                    }
+                if (selectSekolah) {
+                    selectSekolah.innerHTML = '<option value="">Pilih Sekolah</option>';
                 }
-                reloadCurrentActiveTab();
+                localStorage.removeItem('selected_kd_prop');
+                localStorage.removeItem('selected_kd_rayon');
+                localStorage.removeItem('selected_kd_sek');
+                updateSchoolNameLabels();
             });
         }
 
         if (selectRayon) {
             selectRayon.addEventListener('change', async () => {
                 SMAN_RAYON = selectRayon.value;
+                SMAN_SEK = '';
                 await loadSekolahDropdown(SMAN_RAYON);
-                if (selectSekolah && selectSekolah.options.length > 0) {
-                    SMAN_SEK = selectSekolah.value;
-                }
-                reloadCurrentActiveTab();
+                localStorage.removeItem('selected_kd_rayon');
+                localStorage.removeItem('selected_kd_sek');
+                updateSchoolNameLabels();
             });
         }
 
         if (selectSekolah) {
             selectSekolah.addEventListener('change', () => {
                 SMAN_SEK = selectSekolah.value;
-                reloadCurrentActiveTab();
+                if (SMAN_SEK) {
+                    localStorage.setItem('selected_kd_prop', SMAN_PROP);
+                    localStorage.setItem('selected_kd_rayon', SMAN_RAYON);
+                    localStorage.setItem('selected_kd_sek', SMAN_SEK);
+                }
+                debouncedReload();
             });
         }
 
@@ -464,7 +514,7 @@ async function initializeApp() {
                 const res = await fetch(`/api/rayon?kd_prop=${kdProp}`);
                 const json = await res.json();
                 const list = json.data || [];
-                selectRayon.innerHTML = '';
+                selectRayon.innerHTML = '<option value="">Pilih Kab / Kota</option>';
                 list.forEach(r => {
                     const opt = document.createElement('option');
                     opt.value = r.kd_rayon;
@@ -481,7 +531,7 @@ async function initializeApp() {
                 const res = await fetch(`/api/sekolah?kd_rayon=${kdRayon}`);
                 const json = await res.json();
                 const list = json.data || [];
-                selectSekolah.innerHTML = '';
+                selectSekolah.innerHTML = '<option value="">Pilih Sekolah</option>';
                 list.forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.kd_sek;
@@ -524,7 +574,7 @@ async function initializeApp() {
                     if (selectMapel) selectMapel.value = val;
                     if (peringkatSelectMapel) peringkatSelectMapel.value = val;
                 }
-                loadAnalisisSoalData(val);
+                debouncedReload();
             });
         }
 
@@ -546,14 +596,17 @@ async function initializeApp() {
             });
         }
 
+        const debouncedLoadPeringkat = debounce(loadPeringkatData, 400);
+
         if (peringkatSelectMapel) {
             peringkatSelectMapel.addEventListener('change', () => {
                 const val = peringkatSelectMapel.value;
                 if (val) {
                     localStorage.setItem('selected_kd_mapel', val);
                     if (selectMapel) selectMapel.value = val;
+                    if (analisisSoalSelectMapel) analisisSoalSelectMapel.value = val;
                 }
-                loadPeringkatData(val);
+                debouncedLoadPeringkat(val);
             });
         }
 
@@ -597,6 +650,9 @@ async function initializeApp() {
         const initialTab = (hashTab === 'sman2mengwi' || hashTab === 'peringkat' || hashTab === 'analisis-soal' || hashTab === 'dashboard')
             ? hashTab
             : (localStorage.getItem('active_tab') || 'dashboard');
+
+        // Update all dynamic labels before switching to initial tab
+        updateSchoolNameLabels();
 
         // Switch to saved tab and load corresponding data
         switchTab(initialTab);
@@ -645,10 +701,10 @@ function switchTab(tabName) {
     if (nAnalisis) nAnalisis.className = baseStyle;
 
     // Hide all view containers cleanly
-    if (dView) { dView.classList.add('hidden'); dView.style.display = 'none'; }
-    if (sView) { sView.classList.add('hidden'); sView.style.display = 'none'; }
-    if (pView) { pView.classList.add('hidden'); pView.style.display = 'none'; }
-    if (aView) { aView.classList.add('hidden'); aView.style.display = 'none'; }
+    if (dView) dView.classList.add('hidden');
+    if (sView) sView.classList.add('hidden');
+    if (pView) pView.classList.add('hidden');
+    if (aView) aView.classList.add('hidden');
 
     const validTab = (tabName === 'sman2mengwi' || tabName === 'peringkat' || tabName === 'analisis-soal') ? tabName : 'dashboard';
     localStorage.setItem('active_tab', validTab);
@@ -657,22 +713,24 @@ function switchTab(tabName) {
         history.replaceState(null, null, '#' + validTab);
     }
 
+    updateSchoolNameLabels();
+
     if (validTab === 'sman2mengwi') {
-        if (nSman) { nSman.classList.add('active'); nSman.className += " active sidebar-link active"; }
-        if (sView) { sView.classList.remove('hidden'); sView.style.display = 'block'; }
+        if (nSman) nSman.className = baseStyle + " active";
+        if (sView) sView.classList.remove('hidden');
         if (smanSubjectDetailSection) smanSubjectDetailSection.classList.add('hidden');
         loadSmanSummary();
     } else if (validTab === 'peringkat') {
-        if (nRank) { nRank.classList.add('active'); nRank.className += " active sidebar-link active"; }
-        if (pView) { pView.classList.remove('hidden'); pView.style.display = 'block'; }
+        if (nRank) nRank.className = baseStyle + " active";
+        if (pView) pView.classList.remove('hidden');
         loadPeringkatData();
     } else if (validTab === 'analisis-soal') {
-        if (nAnalisis) { nAnalisis.classList.add('active'); nAnalisis.className += " active sidebar-link active"; }
-        if (aView) { aView.classList.remove('hidden'); aView.style.display = 'block'; }
+        if (nAnalisis) nAnalisis.className = baseStyle + " active";
+        if (aView) aView.classList.remove('hidden');
         loadAnalisisSoalData();
     } else {
-        if (nDash) { nDash.classList.add('active'); nDash.className += " active sidebar-link active"; }
-        if (dView) { dView.classList.remove('hidden'); dView.style.display = 'block'; }
+        if (nDash) nDash.className = baseStyle + " active";
+        if (dView) dView.classList.remove('hidden');
         loadDashboardData();
     }
 }
@@ -823,10 +881,11 @@ async function loadDashboardData() {
 // Load SMAN 2 Mengwi Summary (All active subjects comparison)
 async function loadSmanSummary() {
     smanLoading.classList.remove('hidden');
+    smanLoading.innerHTML = '<div class="spinner mb-6"></div><p class="text-slate-500 font-medium">Mengambil ringkasan data mata pelajaran...</p>';
     smanContentLayout.classList.add('hidden');
 
     try {
-        const response = await fetch('/api/sman2mengwi/summary');
+        const response = await fetch(`/api/sman2mengwi/summary?kd_prop=${SMAN_PROP}&kd_rayon=${SMAN_RAYON}&kd_sek=${SMAN_SEK}`);
         const json = await response.json();
 
         if (!json.success || !json.data) {
@@ -876,17 +935,17 @@ function renderSmanOverallChart(list) {
             labels: labels,
             datasets: [
                 {
-                    label: 'SMAN 2 Mengwi',
+                    label: getCurrentSchoolName(),
                     data: sekData,
-                    backgroundColor: 'rgba(37, 99, 235, 0.75)', // Royal Blue
+                    backgroundColor: 'rgba(37, 99, 235, 0.75)',
                     borderColor: '#2563eb',
                     borderWidth: 1,
                     borderRadius: 5
                 },
                 {
-                    label: 'Kab. Badung',
+                    label: getCurrentRayonName(),
                     data: kabData,
-                    backgroundColor: 'rgba(96, 165, 250, 0.75)', // Sky Blue
+                    backgroundColor: 'rgba(96, 165, 250, 0.75)',
                     borderColor: '#60a5fa',
                     borderWidth: 1,
                     borderRadius: 5
@@ -972,7 +1031,7 @@ function renderSmanSummary(summaryPayload) {
         // Calculate difference against Kabupaten
         const diffKab = sekScore - kabScore;
         const compareBadgeClass = diffKab >= 0 ? 'above' : 'below';
-        const compareBadgeText = diffKab >= 0 ? `+${diffKab.toFixed(1)}% vs Badung` : `${diffKab.toFixed(1)}% vs Badung`;
+        const compareBadgeText = diffKab >= 0 ? `+${diffKab.toFixed(1)}% vs ${getCurrentRayonName()}` : `${diffKab.toFixed(1)}% vs ${getCurrentRayonName()}`;
         const compareIcon = diffKab >= 0 ? '▲' : '▼';
 
         const design = subjectColors[subj.code] || { bg: 'bg-slate-500/10', border: 'border-slate-500/30', text: 'text-slate-600' };
@@ -1010,7 +1069,7 @@ function renderSmanSummary(summaryPayload) {
 
             <div class="card-comparison-list">
                 <div class="card-comparison-row">
-                    <span>Kabupaten Badung</span>
+                    <span>${getCurrentRayonName()}</span>
                     <span>${kabScore.toFixed(2)}%</span>
                 </div>
                 <div class="card-comparison-row">
@@ -1055,12 +1114,12 @@ function renderPesertaSection(list) {
     if (badgesEl) {
         badgesEl.innerHTML = `
             <div style="display:flex;align-items:center;gap:6px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:0.625rem;padding:0.4rem 0.85rem">
-                <span style="font-size:0.65rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em">SMAN 2 Mengwi</span>
+                <span style="font-size:0.65rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em">${getCurrentSchoolName()}</span>
                 <span style="font-size:0.9rem;font-weight:800;color:#2563eb">${formatNumber(totalSek)}</span>
                 <span style="font-size:0.65rem;color:#94a3b8;font-weight:600">siswa</span>
             </div>
             <div style="display:flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.625rem;padding:0.4rem 0.85rem">
-                <span style="font-size:0.65rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em">Kab. Badung</span>
+                <span style="font-size:0.65rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em">${getCurrentRayonName()}</span>
                 <span style="font-size:0.9rem;font-weight:800;color:#475569">${formatNumber(totalKab)}</span>
             </div>
             <div style="display:flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.625rem;padding:0.4rem 0.85rem">
@@ -1114,7 +1173,7 @@ function renderPesertaSection(list) {
             labels,
             datasets: [
                 {
-                    label: 'SMAN 2 Mengwi',
+                    label: getCurrentSchoolName(),
                     data: dataSek,
                     backgroundColor: 'rgba(37, 99, 235, 0.8)',
                     borderColor: '#2563eb',
@@ -1123,7 +1182,7 @@ function renderPesertaSection(list) {
                     order: 1
                 },
                 {
-                    label: 'Kab. Badung',
+                    label: getCurrentRayonName(),
                     data: dataKab,
                     backgroundColor: 'rgba(148, 163, 184, 0.3)',
                     borderColor: 'rgba(148,163,184,0.6)',
@@ -1174,6 +1233,8 @@ async function loadSmanSubjectDetail(kdMapel, mapelName) {
     if (selectMapel && kdMapel) {
         selectMapel.value = kdMapel;
         localStorage.setItem('selected_kd_mapel', kdMapel);
+        if (peringkatSelectMapel) peringkatSelectMapel.value = kdMapel;
+        if (analisisSoalSelectMapel) analisisSoalSelectMapel.value = kdMapel;
     }
 
     smanDetailTitle.textContent = mapelName;
@@ -1316,7 +1377,7 @@ function renderHierarchyAccordion(containerElement, hierarchy, elemenSummary, co
                 const indColor = getColorClass(indVal);
                 const indBg = getColorClass(indVal, 'bg');
                 
-                const errorColor = getColorClass(100 - errorVal);
+                const errorColor = getColorClass(errorVal);
 
                 const indItem = document.createElement('div');
                 indItem.className = 'indikator-item';
@@ -1424,21 +1485,21 @@ function renderIndicatorChart(containerId, urutan, scores) {
 
     // Only draw levels that actually have values in API payload
     if (scores.sekolah !== undefined) {
-        labels.push('SMAN 2 Mengwi');
+        labels.push(getCurrentSchoolName());
         data.push(scores.sekolah);
-        bgColors.push('rgba(37, 99, 235, 0.75)'); // Royal Blue
+        bgColors.push('rgba(37, 99, 235, 0.75)');
         borderColors.push('#2563eb');
     }
     if (scores.kabupaten !== undefined) {
-        labels.push('Kab. Badung');
+        labels.push(getCurrentRayonName());
         data.push(scores.kabupaten);
-        bgColors.push('rgba(96, 165, 250, 0.75)'); // Sky Blue
+        bgColors.push('rgba(96, 165, 250, 0.75)');
         borderColors.push('#60a5fa');
     }
     if (scores.provinsi !== undefined) {
-        labels.push('Prov. Bali');
+        labels.push(`Prov. ${getCurrentProvinsiName()}`);
         data.push(scores.provinsi);
-        bgColors.push('rgba(52, 211, 153, 0.75)'); // Emerald Green
+        bgColors.push('rgba(52, 211, 153, 0.75)');
         borderColors.push('#34d399');
     }
     if (scores.nasional !== undefined) {
@@ -1629,13 +1690,17 @@ function renderElemenList(elemenSummary) {
         const score = e.rata_rata_persen || 0;
         const colorClass = getColorClass(score);
         const bgClass = getColorClass(score, 'bg');
+        const jmlIndikator = e.jumlah_indikator || 0;
 
         const item = document.createElement('div');
         item.className = 'elemen-item';
         item.innerHTML = `
             <div class="elemen-item-header">
                 <span class="elemen-title">${e.elemen}</span>
-                <span class="elemen-value ${colorClass}">${score.toFixed(2)}%</span>
+                <div class="flex items-center gap-2">
+                    <span class="elemen-value ${colorClass}">${score.toFixed(2)}%</span>
+                    <span class="text-[9px] text-slate-400 font-semibold">${jmlIndikator} ind</span>
+                </div>
             </div>
             <div class="progress-bar-container">
                 <div class="progress-bar ${bgClass}" style="width: ${score}%"></div>
@@ -1675,10 +1740,11 @@ async function openQuestionModal(kdMapel, urutan) {
         const emptyExplanation = isExplanationEmpty(questionData.pembahasan);
         
         // Custom subtitle indicator if correct answer is hidden by API
+        const kompetensiLabel = [codebook.kompetensi, codebook.subkompetensi].filter(Boolean).join(' / ');
         if (emptyExplanation) {
-            modalSubtitle.innerHTML = `${codebook.kompetensi || ''} / ${codebook.subkompetensi || ''} <span class="bg-amber-50 text-amber-800 border border-amber-200 text-[9px] font-bold px-2 py-0.5 rounded-md ml-2 inline-block">🔒 Kunci & Pembahasan Dirahasiakan</span>`;
+            modalSubtitle.innerHTML = `${kompetensiLabel} <span class="bg-amber-50 text-amber-800 border border-amber-200 text-[9px] font-bold px-2 py-0.5 rounded-md ml-2 inline-block">🔒 Kunci & Pembahasan Dirahasiakan</span>`;
         } else {
-            modalSubtitle.textContent = `${codebook.kompetensi || ''} / ${codebook.subkompetensi || ''}`;
+            modalSubtitle.textContent = kompetensiLabel;
         }
 
         modalQuestionHtml.innerHTML = questionData.pertanyaan;
@@ -2045,16 +2111,13 @@ async function loadPeringkatData(kdMapelParam = null) {
     const pTargetBadge = document.getElementById('peringkat-target-badge');
     const pTargetScore = document.getElementById('peringkat-target-score');
 
-    // Explicitly unhide peringkatView container immediately
+    // Only show peringkatView if it's still the active tab
+    const pViewHidden = pView ? pView.classList.contains('hidden') : true;
     if (pView) {
         pView.classList.remove('hidden');
-        pView.style.display = 'block';
-        pView.style.visibility = 'visible';
     }
     if (pContainer) {
         pContainer.classList.remove('hidden');
-        pContainer.style.display = 'block';
-        pContainer.style.visibility = 'visible';
     }
 
     // Ensure mapelList options exist in pSelectMapel
@@ -2076,10 +2139,11 @@ async function loadPeringkatData(kdMapelParam = null) {
     }
     if (pSelectMapel && selectedKdMapel) pSelectMapel.value = selectedKdMapel;
     if (selectMapel && selectedKdMapel) selectMapel.value = selectedKdMapel;
+    if (analisisSoalSelectMapel && selectedKdMapel) analisisSoalSelectMapel.value = selectedKdMapel;
     console.log('[Peringkat] selectedKdMapel:', selectedKdMapel);
 
     try {
-        const apiUrl = `/api/peringkat-sekolah?kd_mapel=${selectedKdMapel}&kd_prop=${SMAN_PROP}&kd_rayon=${SMAN_RAYON}`;
+        const apiUrl = `/api/peringkat-sekolah?kd_mapel=${selectedKdMapel}&kd_prop=${SMAN_PROP}&kd_rayon=${SMAN_RAYON}&kd_sek=${SMAN_SEK}`;
         console.log('[Peringkat] Fetching:', apiUrl);
         const response = await fetch(apiUrl);
         const result = await response.json();
@@ -2090,7 +2154,6 @@ async function loadPeringkatData(kdMapelParam = null) {
         }
 
         currentPeringkatData = result;
-        if (pHeaderTitle) pHeaderTitle.textContent = `Peringkat Sekolah - ${result.nama_rayon}`;
 
         // Target school badge update
         if (result.target_school) {
@@ -2105,7 +2168,6 @@ async function loadPeringkatData(kdMapelParam = null) {
         renderPeringkatTable();
         if (pLoading) {
             pLoading.classList.add('hidden');
-            pLoading.style.display = 'none';
         }
 
     } catch (err) {
@@ -2115,7 +2177,6 @@ async function loadPeringkatData(kdMapelParam = null) {
         }
         if (pLoading) {
             pLoading.classList.add('hidden');
-            pLoading.style.display = 'none';
         }
     }
 }
@@ -2128,15 +2189,11 @@ function renderPeringkatTable() {
     const pSelectStatus = document.getElementById('peringkat-select-status');
     const pSearch = document.getElementById('peringkat-search');
 
-    if (pView) {
-        pView.classList.remove('hidden');
-        pView.style.display = 'block';
-        pView.style.visibility = 'visible';
+    if (pView && pView.classList.contains('hidden')) {
+        return;
     }
     if (pContainer) {
         pContainer.classList.remove('hidden');
-        pContainer.style.display = 'block';
-        pContainer.style.visibility = 'visible';
     }
 
     console.log('[Peringkat] renderPeringkatTable called, currentPeringkatData:', !!currentPeringkatData, 'tbody:', !!tbody);
@@ -2166,7 +2223,7 @@ function renderPeringkatTable() {
     tbody.innerHTML = '';
 
     if (list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400 font-semibold text-xs">Tidak ada sekolah yang cocok dengan penyaring.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400 font-semibold text-xs">Tidak ada sekolah yang cocok dengan penyaring.</td></tr>`;
         return;
     }
 
@@ -2210,7 +2267,9 @@ function renderPeringkatTable() {
             </td>
             <td class="text-center py-3.5 px-4 font-mono text-xs text-slate-500 whitespace-nowrap" style="color:#64748b">${school.npsn || '-'}</td>
             <td class="text-center py-3.5 px-4 whitespace-nowrap">${statusBadge}</td>
+            <td class="text-center py-3.5 px-4 text-xs font-semibold text-slate-600 whitespace-nowrap">${school.jenjang || '-'}</td>
             <td class="text-right py-3.5 px-4 font-black text-sm whitespace-nowrap ${scoreColorClass}" style="color:${colorHex};font-weight:900">${school.avg.toFixed(2)}%</td>
+            <td class="text-center py-3.5 px-4 font-mono text-xs text-slate-500 whitespace-nowrap">${school.questionsCount || '-'}</td>
             <td class="py-3.5 px-4">
                 <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden border border-slate-200" style="background-color:#f1f5f9;border:1px solid #e2e8f0;height:10px;border-radius:9999px">
                     <div class="${getColorClass(school.avg, 'bg')} h-full rounded-full transition-all duration-500" style="background-color:${colorHex};width:${Math.min(100, Math.max(0, school.avg))}%;height:100%;border-radius:9999px"></div>
@@ -2437,7 +2496,7 @@ function renderAnalisisSoalView() {
             });
         }
         if (weakText) {
-            weakText.textContent = `Ditemukan ${hardCount > 0 ? hardCount : lowestItems.length} butir soal dengan persentase daya serap terendah di SMAN 2 Mengwi. Disarankan memberikan sesi pengayaan khusus pada nomor soal berikut:`;
+            weakText.textContent = `Ditemukan ${hardCount > 0 ? hardCount : lowestItems.length} butir soal dengan persentase daya serap terendah di ${getCurrentSchoolName()}. Disarankan memberikan sesi pengayaan khusus pada nomor soal berikut:`;
         }
     } else {
         if (weakBanner) weakBanner.classList.add('hidden');
@@ -2581,7 +2640,7 @@ function renderAnalisisSoalView() {
             <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                 <div>
                     <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                        <span>🏫 SMAN 2 Mengwi</span>
+                        <span>🏫 ${getCurrentSchoolName()}</span>
                         <span class="text-slate-800 font-extrabold">${item.sekScore.toFixed(1)}%</span>
                     </div>
                     <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
@@ -2591,7 +2650,7 @@ function renderAnalisisSoalView() {
 
                 <div>
                     <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                        <span>🏛️ Kab. Badung</span>
+                        <span>🏛️ ${getCurrentRayonName()}</span>
                         <span class="text-slate-700 font-bold">${item.kabScore.toFixed(1)}%</span>
                     </div>
                     <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
@@ -2601,7 +2660,7 @@ function renderAnalisisSoalView() {
 
                 <div>
                     <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                        <span>🌴 Prov. Bali</span>
+                        <span>🌴 Prov. ${getCurrentProvinsiName()}</span>
                         <span class="text-slate-700 font-bold">${item.provScore.toFixed(1)}%</span>
                     </div>
                     <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
